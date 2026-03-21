@@ -1,0 +1,17 @@
+table: "orders"
+metrics:
+  revenue:
+    title: "Revenue"
+    aggregate: "sum"
+    field: "amount"
+  orders_count:
+    title: "Orders count"
+    aggregate: "count"
+    field: "order_id"
+dimensions:
+  country:
+    title: "Country"
+    field: "country"
+  status:
+    title: "Status"
+    field: "status"
