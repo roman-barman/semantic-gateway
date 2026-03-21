@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["semantic-gateway-server"]
+members = ["semantic-core","semantic-gateway-server"]
