@@ -2,5 +2,7 @@
 name = "semantic-gateway-server"
 version = "0.1.0"
 edition = "2024"
+authors = ["Raman Zanko"]
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
