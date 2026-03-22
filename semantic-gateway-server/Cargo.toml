@@ -6,3 +6,6 @@ authors = ["Raman Zanko"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+serde_yaml = { workspace = true }
+semantic-core = { path = "../semantic-core"}
+thiserror = "2"
