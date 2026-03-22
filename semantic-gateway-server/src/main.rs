@@ -1,17 +1,18 @@
+use crate::infrastructure::initialize_tracing_subscribe;
 use clap::Parser;
 use semantic_core::ModelConfiguration;
 use std::path::PathBuf;
+use tracing::info;
 
+mod infrastructure;
 mod server_arguments;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_arguments = server_arguments::ServerArguments::parse();
-    let models_dir = read_models(server_arguments.models_dir()).unwrap();
-    println!(
-        "Loaded {} models from {}",
-        models_dir.len(),
-        server_arguments.models_dir().display()
-    )
+    initialize_tracing_subscribe("info")?;
+    let models = read_models(server_arguments.models_dir())?;
+    info!("Loaded {} models", models.len());
+    Ok(())
 }
 
 fn read_models(path: &PathBuf) -> Result<Vec<ModelConfiguration>, BuildModelsError> {
