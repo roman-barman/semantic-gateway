@@ -5,3 +5,4 @@ members = ["semantic-core","semantic-gateway-server"]
 [workspace.dependencies]
 serde_yaml = "0.9"
 serde = { version = "1", features = ["derive"] }
+thiserror = "2"

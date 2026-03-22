@@ -10,6 +10,12 @@ pub struct ModelConfiguration {
     dimensions: HashMap<String, DimensionConfiguration>,
 }
 
+impl ModelConfiguration {
+    pub(crate) fn table_name(&self) -> &str {
+        &self.table.as_ref()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

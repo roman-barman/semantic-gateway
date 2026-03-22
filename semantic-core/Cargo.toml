@@ -6,6 +6,8 @@ authors = ["Raman Zanko"]
 
 [dependencies]
 serde = { workspace = true }
+datafusion = "52"
+thiserror = { workspace = true }
 
 [dev-dependencies]
 serde_yaml = { workspace = true }
