@@ -4,12 +4,14 @@ use semantic_core::ModelConfiguration;
 use std::path::PathBuf;
 use tracing::info;
 
+mod configuration;
 mod infrastructure;
 mod server_arguments;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_arguments = server_arguments::ServerArguments::parse();
-    initialize_tracing_subscribe("info")?;
+    let config = configuration::Configuration::read_configuration()?;
+    initialize_tracing_subscribe(config.server().log_level())?;
     let models = read_models(server_arguments.models_dir())?;
     info!("Loaded {} models", models.len());
     Ok(())
@@ -39,7 +41,7 @@ fn read_models(path: &PathBuf) -> Result<Vec<ModelConfiguration>, BuildModelsErr
 #[derive(thiserror::Error, Debug)]
 enum BuildModelsError {
     #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
     #[error("YAML error: {0}")]
-    YamlError(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_yaml::Error),
 }

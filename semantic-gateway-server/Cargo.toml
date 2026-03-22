@@ -12,3 +12,5 @@ thiserror = "2"
 tracing = "0.1"
 tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "json", "chrono"] }
+config = "0.15"
+serde = { workspace = true }
