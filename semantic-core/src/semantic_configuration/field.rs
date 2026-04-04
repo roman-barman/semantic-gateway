@@ -1,5 +1,11 @@
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
-pub(super) struct Field(String);
+pub(crate) struct Field(String);
+
+impl AsRef<str> for Field {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
 
 #[cfg(test)]
 impl Field {

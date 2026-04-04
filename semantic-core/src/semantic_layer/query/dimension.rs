@@ -1,10 +1,13 @@
-pub(super) struct Dimension {
+pub(crate) struct Dimension {
     field: String,
     table: String,
 }
 
 impl Dimension {
-    pub fn table_name(&self) -> &str {
+    pub(crate) fn table_name(&self) -> &str {
         &self.table
+    }
+    pub(crate) fn field_name(&self) -> &str {
+        &self.field
     }
 }

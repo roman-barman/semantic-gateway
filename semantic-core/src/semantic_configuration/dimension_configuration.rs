@@ -7,6 +7,12 @@ pub(super) struct DimensionConfiguration {
     field: Field,
 }
 
+impl DimensionConfiguration {
+    pub(crate) fn field(&self) -> &Field {
+        &self.field
+    }
+}
+
 #[cfg(test)]
 impl DimensionConfiguration {
     pub fn new(title: &str, field: &str) -> Self {

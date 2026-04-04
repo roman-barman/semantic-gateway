@@ -1,6 +1,14 @@
+use crate::semantic_configuration::Aggregate;
+use crate::semantic_layer::query::Query;
+use crate::semantic_layer::query_result::QueryResult;
 use crate::semantic_layer::semantic_layer_info::SemanticLayerInfo;
-use datafusion::prelude::SessionContext;
+use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
+use datafusion::arrow::datatypes::{DataType, Field, Schema};
+use datafusion::datasource::MemTable;
+use datafusion::error::DataFusionError;
+use datafusion::prelude::{DataFrame, Expr, SessionContext, col};
 use std::rc::Rc;
+use std::sync::Arc;
 
 struct SemanticLayerContext {
     semantic_layer_info: Rc<SemanticLayerInfo>,
@@ -14,7 +22,114 @@ impl SemanticLayerContext {
             context: SessionContext::new(),
         }
     }
+
+    pub async fn execute_query(self, query: &Query) -> Result<QueryResult, ExecutionQueryError> {
+        self.context
+            .register_table("orders", create_orders_table())
+            .map_err(ExecutionQueryError::RegisterTable)?;
+        let df = self.build_dataframe(query).await?;
+        let result = df
+            .collect()
+            .await
+            .map_err(ExecutionQueryError::QueryExecution)?;
+
+        Ok(QueryResult::empty())
+    }
+
+    async fn build_dataframe(&self, query: &Query) -> Result<DataFrame, ExecutionQueryError> {
+        let table = query
+            .tables()
+            .iter()
+            .next()
+            .ok_or(ExecutionQueryError::EmptyQuery)?
+            .to_string();
+        let mut df = self
+            .context
+            .table(table)
+            .await
+            .map_err(ExecutionQueryError::DataFrameCreation)?;
+        let group_by: Vec<Expr> = query
+            .dimensions()
+            .iter()
+            .filter_map(|dimension| {
+                self.semantic_layer_info
+                    .get_dimension_column(dimension.table_name(), dimension.field_name())
+                    .and_then(|field| Some(col(field.as_ref())))
+            })
+            .collect();
+        let aggregate: Vec<Expr> = query
+            .metrics()
+            .iter()
+            .filter_map(|metric| {
+                self.semantic_layer_info
+                    .get_metric_info(metric.table_name(), metric.field_name())
+                    .and_then(|(aggregate, field)| {
+                        Some(aggregate_expr(
+                            aggregate,
+                            field.as_ref(),
+                            metric.field_name(),
+                        ))
+                    })
+            })
+            .collect();
+
+        df = df
+            .aggregate(group_by, aggregate)
+            .map_err(ExecutionQueryError::AggregationCreation)?;
+
+        Ok(df)
+    }
+}
+
+fn aggregate_expr(aggregation: &Aggregate, field: &str, alias: &str) -> Expr {
+    let field = col(field);
+    let expr = match aggregation {
+        Aggregate::Sum => datafusion::functions_aggregate::sum::sum(field),
+        Aggregate::Count => datafusion::functions_aggregate::count::count(field),
+    };
+
+    expr.alias(alias)
+}
+
+fn create_orders_table() -> Arc<MemTable> {
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("order_id", DataType::Int64, false),
+        Field::new("country", DataType::Utf8, false),
+        Field::new("amount", DataType::Float64, false),
+        Field::new("status", DataType::Utf8, false),
+    ]));
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![
+            Arc::new(Int64Array::from(vec![1, 2, 3, 4, 5, 6])),
+            Arc::new(StringArray::from(vec!["GE", "GE", "RU", "RU", "US", "US"])),
+            Arc::new(Float64Array::from(vec![
+                150.0, 200.0, 350.0, 100.0, 500.0, 750.0,
+            ])),
+            Arc::new(StringArray::from(vec![
+                "completed",
+                "completed",
+                "completed",
+                "cancelled",
+                "completed",
+                "completed",
+            ])),
+        ],
+    )
+    .expect("Failed to create RecordBatch");
+    Arc::new(MemTable::try_new(schema, vec![vec![batch]]).expect("Failed to create MemTable"))
 }
 
 #[derive(Debug, thiserror::Error)]
-enum ExecutionQueryError {}
+enum ExecutionQueryError {
+    #[error("Failed to register table: {0}")]
+    RegisterTable(DataFusionError),
+    #[error("Empty query")]
+    EmptyQuery,
+    #[error("Failed to create DataFrame: {0}")]
+    DataFrameCreation(DataFusionError),
+    #[error("Failed to create aggregation: {0}")]
+    AggregationCreation(DataFusionError),
+    #[error("Failed to execute query: {0}")]
+    QueryExecution(DataFusionError),
+}

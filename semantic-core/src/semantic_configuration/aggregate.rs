@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub(super) enum Aggregate {
+pub(crate) enum Aggregate {
     Sum,
     Count,
 }

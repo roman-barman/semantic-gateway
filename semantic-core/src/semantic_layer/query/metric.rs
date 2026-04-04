@@ -1,4 +1,4 @@
-pub(super) struct Metric {
+pub(crate) struct Metric {
     field: String,
     table: String,
 }
@@ -6,5 +6,9 @@ pub(super) struct Metric {
 impl Metric {
     pub fn table_name(&self) -> &str {
         &self.table
+    }
+
+    pub fn field_name(&self) -> &str {
+        &self.field
     }
 }

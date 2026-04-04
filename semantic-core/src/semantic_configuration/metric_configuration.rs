@@ -3,10 +3,20 @@ use crate::semantic_configuration::field::Field;
 use crate::semantic_configuration::title::Title;
 
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
-pub(super) struct MetricConfiguration {
+pub(crate) struct MetricConfiguration {
     title: Title,
     aggregate: Aggregate,
     field: Field,
+}
+
+impl MetricConfiguration {
+    pub(crate) fn aggregate(&self) -> &Aggregate {
+        &self.aggregate
+    }
+
+    pub(crate) fn field(&self) -> &Field {
+        &self.field
+    }
 }
 
 #[cfg(test)]

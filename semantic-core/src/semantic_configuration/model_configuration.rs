@@ -1,3 +1,4 @@
+use crate::semantic_configuration::Field;
 use crate::semantic_configuration::dimension_configuration::DimensionConfiguration;
 use crate::semantic_configuration::metric_configuration::MetricConfiguration;
 use crate::semantic_configuration::table::Table;
@@ -13,6 +14,14 @@ pub struct ModelConfiguration {
 impl ModelConfiguration {
     pub(crate) fn table_name(&self) -> &str {
         &self.table.as_ref()
+    }
+
+    pub(crate) fn dimension_column(&self, dimension: &str) -> Option<&Field> {
+        self.dimensions.get(dimension).map(|dim| dim.field())
+    }
+
+    pub(crate) fn get_metric_configuration(&self, metric: &str) -> Option<&MetricConfiguration> {
+        self.metrics.get(metric)
     }
 }
 
