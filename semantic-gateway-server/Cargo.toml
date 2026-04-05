@@ -15,3 +15,5 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "json",
 config = "0.15"
 serde = { workspace = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+actix-web = "4"
+tracing-actix-web = "0.7"

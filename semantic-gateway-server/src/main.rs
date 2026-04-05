@@ -1,8 +1,10 @@
 use crate::infrastructure::initialize_tracing_subscribe;
+use actix_web::{App, HttpServer};
 use clap::Parser;
 use semantic_core::ModelConfiguration;
 use std::path::PathBuf;
 use tracing::info;
+use tracing_actix_web::TracingLogger;
 
 mod configuration;
 mod infrastructure;
@@ -15,6 +17,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     initialize_tracing_subscribe(config.server().log_level())?;
     let models = read_models(server_arguments.models_dir())?;
     info!("Loaded {} models", models.len());
+
+    HttpServer::new(|| App::new().wrap(TracingLogger::default()))
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await?;
+
     Ok(())
 }
 
