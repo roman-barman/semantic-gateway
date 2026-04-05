@@ -14,3 +14,4 @@ tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "json", "chrono"] }
 config = "0.15"
 serde = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

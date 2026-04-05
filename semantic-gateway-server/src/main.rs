@@ -8,7 +8,8 @@ mod configuration;
 mod infrastructure;
 mod server_arguments;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_arguments = server_arguments::ServerArguments::parse();
     let config = configuration::Configuration::read_configuration()?;
     initialize_tracing_subscribe(config.server().log_level())?;
