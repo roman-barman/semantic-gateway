@@ -1,3 +1,4 @@
+use crate::configuration::Configuration;
 use actix_web::{App, HttpServer};
 use tokio::task::{JoinError, JoinHandle};
 use tracing_actix_web::TracingLogger;
@@ -7,9 +8,9 @@ pub(crate) struct WebServer {
 }
 
 impl WebServer {
-    pub(crate) fn start() -> Result<Self, WebServerError> {
+    pub(crate) fn start(config: &Configuration) -> Result<Self, WebServerError> {
         let server_task = HttpServer::new(|| App::new().wrap(TracingLogger::default()))
-            .bind(("127.0.0.1", 8080))
+            .bind(config.server().address())
             .map_err(WebServerError::BindAddress)?
             .run();
 

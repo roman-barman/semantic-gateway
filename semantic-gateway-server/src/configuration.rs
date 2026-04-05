@@ -30,11 +30,17 @@ impl Configuration {
 #[derive(serde::Deserialize, Clone)]
 pub(crate) struct ServerConfiguration {
     log_level: String,
+    port: u16,
+    host: String,
 }
 
 impl ServerConfiguration {
     pub(crate) fn log_level(&self) -> &str {
         &self.log_level
+    }
+
+    pub(crate) fn address(&self) -> (&str, u16) {
+        (&self.host, self.port)
     }
 }
 
