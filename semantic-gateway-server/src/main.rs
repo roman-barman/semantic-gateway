@@ -1,14 +1,13 @@
 use crate::infrastructure::initialize_tracing_subscribe;
-use actix_web::{App, HttpServer};
 use clap::Parser;
 use semantic_core::ModelConfiguration;
 use std::path::PathBuf;
 use tracing::info;
-use tracing_actix_web::TracingLogger;
 
 mod configuration;
 mod infrastructure;
 mod server_arguments;
+mod web_server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,10 +17,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let models = read_models(server_arguments.models_dir())?;
     info!("Loaded {} models", models.len());
 
-    HttpServer::new(|| App::new().wrap(TracingLogger::default()))
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await?;
+    let server = web_server::WebServer::start()?;
+    tokio::signal::ctrl_c().await?;
+    server.stop().await?;
 
     Ok(())
 }
