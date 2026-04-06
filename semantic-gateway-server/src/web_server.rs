@@ -1,3 +1,5 @@
+mod api;
+
 use crate::configuration::Configuration;
 use actix_web::{App, HttpServer};
 use tokio::task::{JoinError, JoinHandle};
@@ -9,10 +11,14 @@ pub(crate) struct WebServer {
 
 impl WebServer {
     pub(crate) fn start(config: &Configuration) -> Result<Self, WebServerError> {
-        let server_task = HttpServer::new(|| App::new().wrap(TracingLogger::default()))
-            .bind(config.server().address())
-            .map_err(WebServerError::BindAddress)?
-            .run();
+        let server_task = HttpServer::new(|| {
+            App::new()
+                .wrap(TracingLogger::default())
+                .service(api::health)
+        })
+        .bind(config.server().address())
+        .map_err(WebServerError::BindAddress)?
+        .run();
 
         Ok(Self {
             server_task: tokio::spawn(server_task),
