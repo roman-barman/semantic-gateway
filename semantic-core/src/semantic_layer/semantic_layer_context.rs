@@ -7,16 +7,15 @@ use datafusion::arrow::datatypes::{DataType, Field, Schema};
 use datafusion::datasource::MemTable;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::{DataFrame, Expr, SessionContext, col};
-use std::rc::Rc;
 use std::sync::Arc;
 
-struct SemanticLayerContext {
-    semantic_layer_info: Rc<SemanticLayerInfo>,
+pub struct SemanticLayerContext<'a> {
+    semantic_layer_info: &'a SemanticLayerInfo,
     context: SessionContext,
 }
 
-impl SemanticLayerContext {
-    fn new(semantic_layer_info: Rc<SemanticLayerInfo>) -> Self {
+impl<'a> SemanticLayerContext<'a> {
+    pub fn new(semantic_layer_info: &'a SemanticLayerInfo) -> Self {
         SemanticLayerContext {
             semantic_layer_info,
             context: SessionContext::new(),
@@ -121,7 +120,7 @@ fn create_orders_table() -> Arc<MemTable> {
 }
 
 #[derive(Debug, thiserror::Error)]
-enum ExecutionQueryError {
+pub enum ExecutionQueryError {
     #[error("Failed to register table: {0}")]
     RegisterTable(DataFusionError),
     #[error("Empty query")]

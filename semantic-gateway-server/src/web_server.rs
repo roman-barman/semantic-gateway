@@ -1,7 +1,8 @@
 mod api;
 
 use crate::configuration::Configuration;
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, web};
+use semantic_core::{ModelConfiguration, SemanticLayerInfo};
 use tokio::task::{JoinError, JoinHandle};
 use tracing_actix_web::TracingLogger;
 
@@ -10,12 +11,18 @@ pub(crate) struct WebServer {
 }
 
 impl WebServer {
-    pub(crate) fn start(config: &Configuration) -> Result<Self, WebServerError> {
-        let server_task = HttpServer::new(|| {
+    pub(crate) fn start(
+        config: &Configuration,
+        models: Vec<ModelConfiguration>,
+    ) -> Result<Self, WebServerError> {
+        let semantic_layer_info = web::Data::new(SemanticLayerInfo::new(models));
+
+        let server_task = HttpServer::new(move || {
             App::new()
                 .wrap(TracingLogger::default())
                 .service(api::health)
                 .service(api::execute_query)
+                .app_data(semantic_layer_info.clone())
         })
         .bind(config.server().address())
         .map_err(WebServerError::BindAddress)?

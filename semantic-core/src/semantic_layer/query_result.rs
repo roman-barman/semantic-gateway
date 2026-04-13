@@ -4,7 +4,7 @@ mod column;
 mod result_row;
 mod result_value;
 
-pub(super) struct QueryResult {
+pub struct QueryResult {
     rows: Vec<ResultRow>,
 }
 

@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let models = read_models(server_arguments.models_dir())?;
     info!("Loaded {} models", models.len());
 
-    let server = web_server::WebServer::start(&config)?;
+    let server = web_server::WebServer::start(&config, models)?;
     tokio::signal::ctrl_c().await?;
     server.stop().await?;
 
