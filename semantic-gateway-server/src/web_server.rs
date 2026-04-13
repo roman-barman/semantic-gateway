@@ -15,6 +15,7 @@ impl WebServer {
             App::new()
                 .wrap(TracingLogger::default())
                 .service(api::health)
+                .service(api::execute_query)
         })
         .bind(config.server().address())
         .map_err(WebServerError::BindAddress)?
