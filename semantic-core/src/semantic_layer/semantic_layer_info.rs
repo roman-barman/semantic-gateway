@@ -7,18 +7,19 @@ pub struct SemanticLayerInfo {
 }
 
 impl SemanticLayerInfo {
-    pub fn new(models: Vec<ModelConfiguration>) -> Self {
-        let layer = models
-            .into_iter()
-            .map(|model| (model.table_name().to_string(), model))
-            .collect();
-
+    pub fn new(layer: HashMap<String, ModelConfiguration>) -> Self {
         Self { layer }
     }
 
-    pub(crate) fn get_dimension_column(&self, table: &str, dimension: &str) -> Option<&Field> {
+    pub(crate) fn table(&self, model: &str) -> Option<&str> {
         self.layer
-            .get(table)
+            .get(model)
+            .map(|model_config| model_config.table_name())
+    }
+
+    pub(crate) fn get_dimension_column(&self, model: &str, dimension: &str) -> Option<&Field> {
+        self.layer
+            .get(model)
             .and_then(|model| model.dimension_column(dimension))
     }
 

@@ -3,6 +3,7 @@ mod api;
 use crate::configuration::Configuration;
 use actix_web::{App, HttpServer, web};
 use semantic_core::{ModelConfiguration, SemanticLayerInfo};
+use std::collections::HashMap;
 use tokio::task::{JoinError, JoinHandle};
 use tracing_actix_web::TracingLogger;
 
@@ -13,9 +14,9 @@ pub(crate) struct WebServer {
 impl WebServer {
     pub(crate) fn start(
         config: &Configuration,
-        models: Vec<ModelConfiguration>,
+        layer: HashMap<String, ModelConfiguration>,
     ) -> Result<Self, WebServerError> {
-        let semantic_layer_info = web::Data::new(SemanticLayerInfo::new(models));
+        let semantic_layer_info = web::Data::new(SemanticLayerInfo::new(layer));
 
         let server_task = HttpServer::new(move || {
             App::new()

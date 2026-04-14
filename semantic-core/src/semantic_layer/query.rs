@@ -5,31 +5,28 @@ use std::collections::HashSet;
 mod dimension;
 mod metric;
 
-pub(super) struct Query {
-    metrics: Vec<Metric>,
-    dimensions: Vec<Dimension>,
+pub struct Query<'a> {
+    metrics: Vec<Metric<'a>>,
+    dimensions: Vec<Dimension<'a>>,
 }
 
-impl Query {
-    pub(super) fn metrics(&self) -> &Vec<Metric> {
+impl<'a> Query<'a> {
+    pub(super) fn metrics(&self) -> &[Metric] {
         &self.metrics
     }
 
-    pub(super) fn dimensions(&self) -> &Vec<Dimension> {
+    pub(super) fn dimensions(&self) -> &[Dimension] {
         &self.dimensions
     }
 
-    pub(super) fn tables(&self) -> HashSet<&str> {
-        let metrics_tables: HashSet<&str> = self
-            .metrics
-            .iter()
-            .map(|metric| metric.table_name())
-            .collect();
-        let dimension_tables: HashSet<&str> = self
+    pub(super) fn models(&self) -> HashSet<&str> {
+        let metrics_models: HashSet<&str> =
+            self.metrics.iter().map(|metric| metric.model()).collect();
+        let dimension_models: HashSet<&str> = self
             .dimensions
             .iter()
-            .map(|dimension| dimension.table_name())
+            .map(|dimension| dimension.model())
             .collect();
-        metrics_tables.union(&dimension_tables).cloned().collect()
+        metrics_models.union(&dimension_models).cloned().collect()
     }
 }

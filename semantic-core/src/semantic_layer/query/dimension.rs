@@ -1,13 +1,17 @@
-pub(crate) struct Dimension {
-    field: String,
-    table: String,
+pub struct Dimension<'a> {
+    name: &'a str,
+    model: &'a str,
 }
 
-impl Dimension {
-    pub(crate) fn table_name(&self) -> &str {
-        &self.table
+impl<'a> Dimension<'a> {
+    pub fn new(name: &'a str, model: &'a str) -> Self {
+        Dimension { name, model }
     }
-    pub(crate) fn field_name(&self) -> &str {
-        &self.field
+
+    pub(crate) fn model(&self) -> &str {
+        &self.model
+    }
+    pub(crate) fn name(&self) -> &str {
+        &self.name
     }
 }

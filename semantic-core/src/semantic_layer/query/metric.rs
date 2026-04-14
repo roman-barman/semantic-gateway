@@ -1,14 +1,18 @@
-pub(crate) struct Metric {
-    field: String,
-    table: String,
+pub struct Metric<'a> {
+    name: &'a str,
+    model: &'a str,
 }
 
-impl Metric {
-    pub fn table_name(&self) -> &str {
-        &self.table
+impl<'a> Metric<'a> {
+    pub fn new(name: &'a str, model: &'a str) -> Self {
+        Metric { name, model }
     }
 
-    pub fn field_name(&self) -> &str {
-        &self.field
+    pub(crate) fn model(&self) -> &str {
+        &self.model
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.name
     }
 }

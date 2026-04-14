@@ -1,8 +1,11 @@
 use semantic_core::ModelConfiguration;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub(crate) fn read_models(path: &PathBuf) -> Result<Vec<ModelConfiguration>, ReadModelsError> {
-    let mut models = Vec::new();
+pub(crate) fn read_models(
+    path: &PathBuf,
+) -> Result<HashMap<String, ModelConfiguration>, ReadModelsError> {
+    let mut models = HashMap::new();
     for dir_entry in std::fs::read_dir(path).map_err(ReadModelsError::ReadDir)? {
         let dir_entry = dir_entry?;
 
@@ -12,9 +15,14 @@ pub(crate) fn read_models(path: &PathBuf) -> Result<Vec<ModelConfiguration>, Rea
             if let Some(extension) = extension.and_then(|e| e.to_str())
                 && (extension == "yaml" || extension == "yml")
             {
+                let name = dir_entry
+                    .file_name()
+                    .to_str()
+                    .ok_or(ReadModelsError::FileName)?
+                    .to_string();
                 let file = std::fs::File::open(path)?;
                 let model = serde_yaml::from_reader(file)?;
-                models.push(model);
+                models.insert(name, model);
             }
         }
     }
@@ -30,4 +38,6 @@ pub(crate) enum ReadModelsError {
     Io(#[from] std::io::Error),
     #[error("YAML error: {0}")]
     ParseYaml(#[from] serde_yaml::Error),
+    #[error("Can not read file name")]
+    FileName,
 }

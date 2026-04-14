@@ -22,7 +22,10 @@ impl<'a> SemanticLayerContext<'a> {
         }
     }
 
-    pub async fn execute_query(self, query: &Query) -> Result<QueryResult, ExecutionQueryError> {
+    pub async fn execute_query(
+        self,
+        query: &Query<'_>,
+    ) -> Result<QueryResult, ExecutionQueryError> {
         self.context
             .register_table("orders", create_orders_table())
             .map_err(ExecutionQueryError::RegisterTable)?;
@@ -35,13 +38,17 @@ impl<'a> SemanticLayerContext<'a> {
         Ok(QueryResult::empty())
     }
 
-    async fn build_dataframe(&self, query: &Query) -> Result<DataFrame, ExecutionQueryError> {
-        let table = query
-            .tables()
+    async fn build_dataframe(&self, query: &Query<'a>) -> Result<DataFrame, ExecutionQueryError> {
+        let model = query
+            .models()
             .iter()
             .next()
             .ok_or(ExecutionQueryError::EmptyQuery)?
             .to_string();
+        let table = self
+            .semantic_layer_info
+            .table(model.as_ref())
+            .ok_or(ExecutionQueryError::InvalidModel(model.to_string()))?;
         let mut df = self
             .context
             .table(table)
@@ -52,7 +59,7 @@ impl<'a> SemanticLayerContext<'a> {
             .iter()
             .filter_map(|dimension| {
                 self.semantic_layer_info
-                    .get_dimension_column(dimension.table_name(), dimension.field_name())
+                    .get_dimension_column(dimension.model(), dimension.name())
                     .and_then(|field| Some(col(field.as_ref())))
             })
             .collect();
@@ -61,13 +68,9 @@ impl<'a> SemanticLayerContext<'a> {
             .iter()
             .filter_map(|metric| {
                 self.semantic_layer_info
-                    .get_metric_info(metric.table_name(), metric.field_name())
+                    .get_metric_info(metric.model(), metric.name())
                     .and_then(|(aggregate, field)| {
-                        Some(aggregate_expr(
-                            aggregate,
-                            field.as_ref(),
-                            metric.field_name(),
-                        ))
+                        Some(aggregate_expr(aggregate, field.as_ref(), metric.name()))
                     })
             })
             .collect();
@@ -131,4 +134,6 @@ pub enum ExecutionQueryError {
     AggregationCreation(DataFusionError),
     #[error("Failed to execute query: {0}")]
     QueryExecution(DataFusionError),
+    #[error("Invalid model: {0}")]
+    InvalidModel(String),
 }
