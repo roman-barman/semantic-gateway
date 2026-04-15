@@ -9,7 +9,17 @@ pub(crate) async fn execute_query(
     request: web::Json<QueryRequest>,
 ) -> HttpResponse {
     let context = SemanticLayerContext::new(&semantic_layer_info);
-    HttpResponse::Ok().finish()
+    let query = map_to_query(&request);
+    match query {
+        Err(_) => HttpResponse::InternalServerError().finish(),
+        Ok(query) => {
+            let result = context.execute_query(&query).await;
+            match result {
+                Err(_) => HttpResponse::InternalServerError().finish(),
+                Ok(_) => HttpResponse::Ok().finish(),
+            }
+        }
+    }
 }
 
 #[derive(serde::Deserialize, Debug)]
