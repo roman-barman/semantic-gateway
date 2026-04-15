@@ -1,5 +1,5 @@
-use crate::semantic_layer::query::dimension::Dimension;
-use crate::semantic_layer::query::metric::Metric;
+pub use crate::semantic_layer::query::dimension::Dimension;
+pub use crate::semantic_layer::query::metric::Metric;
 use std::collections::HashSet;
 
 mod dimension;
@@ -11,6 +11,13 @@ pub struct Query<'a> {
 }
 
 impl<'a> Query<'a> {
+    pub fn new(metrics: Vec<Metric<'a>>, dimensions: Vec<Dimension<'a>>) -> Self {
+        Self {
+            metrics,
+            dimensions,
+        }
+    }
+
     pub(super) fn metrics(&self) -> &[Metric] {
         &self.metrics
     }
