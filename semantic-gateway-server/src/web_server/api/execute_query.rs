@@ -1,4 +1,3 @@
-use crate::web_server::api::execute_query::QueryError::{InvalidDimension, InvalidMeasure};
 use actix_web::{HttpResponse, post, web};
 use semantic_core::query::{Dimension, Metric, Query};
 use semantic_core::{SemanticLayerContext, SemanticLayerInfo};
@@ -26,7 +25,7 @@ fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
         .map(split_to_parts)
         .map(|parts| {
             if parts.len() != 2 {
-                return Err(InvalidMeasure(parts.join(".")));
+                return Err(QueryError::InvalidMeasure(parts.join(".")));
             }
             Ok(Metric::new(parts[0], parts[1]))
         })
@@ -38,7 +37,7 @@ fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
         .map(split_to_parts)
         .map(|parts| {
             if parts.len() != 2 {
-                return Err(InvalidDimension(parts.join(".")));
+                return Err(QueryError::InvalidDimension(parts.join(".")));
             }
             Ok(Dimension::new(parts[0], parts[1]))
         })
