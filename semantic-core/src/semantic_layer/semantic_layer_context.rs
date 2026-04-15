@@ -1,6 +1,6 @@
 use crate::semantic_configuration::Aggregate;
 use crate::semantic_layer::query::Query;
-use crate::semantic_layer::query_result::QueryResult;
+use crate::semantic_layer::query_result::{QueryResult, QueryResultError};
 use crate::semantic_layer::semantic_layer_info::SemanticLayerInfo;
 use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
 use datafusion::arrow::datatypes::{DataType, Field, Schema};
@@ -35,7 +35,7 @@ impl<'a> SemanticLayerContext<'a> {
             .await
             .map_err(ExecutionQueryError::QueryExecution)?;
 
-        Ok(QueryResult::empty())
+        Ok(QueryResult::try_from(result)?)
     }
 
     async fn build_dataframe(&self, query: &Query<'a>) -> Result<DataFrame, ExecutionQueryError> {
@@ -136,4 +136,6 @@ pub enum ExecutionQueryError {
     QueryExecution(DataFusionError),
     #[error("Invalid model: {0}")]
     InvalidModel(String),
+    #[error("Failed to parse query result: {0}")]
+    QueryResult(#[from] QueryResultError),
 }
