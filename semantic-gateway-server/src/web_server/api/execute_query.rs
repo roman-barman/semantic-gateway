@@ -16,7 +16,7 @@ pub(crate) async fn execute_query(
             let result = context.execute_query(&query).await;
             match result {
                 Err(_) => HttpResponse::InternalServerError().finish(),
-                Ok(_) => HttpResponse::Ok().finish(),
+                Ok(result) => HttpResponse::Ok().json(result),
             }
         }
     }

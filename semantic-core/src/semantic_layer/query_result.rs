@@ -14,6 +14,7 @@ mod column_meta;
 mod column_value;
 mod value_type;
 
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct QueryResult {
     schema: Vec<ColumnMeta>,
     columns: HashMap<String, Vec<ColumnValue>>,

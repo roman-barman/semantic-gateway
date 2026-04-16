@@ -1,4 +1,5 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(untagged)]
 pub enum ColumnValue {
     String(String),
     Int(i64),
