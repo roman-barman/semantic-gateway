@@ -15,8 +15,9 @@ pub(crate) fn read_models(
             if let Some(extension) = extension.and_then(|e| e.to_str())
                 && (extension == "yaml" || extension == "yml")
             {
-                let name = dir_entry
-                    .file_name()
+                let name = path
+                    .file_stem()
+                    .ok_or(ReadModelsError::FileName)?
                     .to_str()
                     .ok_or(ReadModelsError::FileName)?
                     .to_string();

@@ -50,7 +50,7 @@ impl TryFrom<Vec<RecordBatch>> for QueryResult {
             .collect();
         let mut result = HashMap::new();
         for col_idx in 0..batch.num_columns() {
-            let name = schema.field(col_idx).to_string();
+            let name = schema.field(col_idx).name().to_string();
             let array = batch.column(col_idx);
             result.insert(name, serialize_column(array)?);
         }

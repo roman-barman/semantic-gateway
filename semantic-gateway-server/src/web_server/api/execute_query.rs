@@ -37,7 +37,7 @@ fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
             if parts.len() != 2 {
                 return Err(QueryError::InvalidMeasure(parts.join(".")));
             }
-            Ok(Metric::new(parts[0], parts[1]))
+            Ok(Metric::new(parts[1], parts[0]))
         })
         .collect();
 
@@ -49,7 +49,7 @@ fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
             if parts.len() != 2 {
                 return Err(QueryError::InvalidDimension(parts.join(".")));
             }
-            Ok(Dimension::new(parts[0], parts[1]))
+            Ok(Dimension::new(parts[1], parts[0]))
         })
         .collect();
 
