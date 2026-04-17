@@ -18,11 +18,11 @@ impl<'a> Query<'a> {
         }
     }
 
-    pub(super) fn metrics(&self) -> &[Metric] {
+    pub(super) fn metrics(&self) -> &[Metric<'_>] {
         &self.metrics
     }
 
-    pub(super) fn dimensions(&self) -> &[Dimension] {
+    pub(super) fn dimensions(&self) -> &[Dimension<'_>] {
         &self.dimensions
     }
 

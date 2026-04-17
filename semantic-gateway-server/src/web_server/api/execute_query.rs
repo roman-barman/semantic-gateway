@@ -11,11 +11,17 @@ pub(crate) async fn execute_query(
     let context = SemanticLayerContext::new(&semantic_layer_info);
     let query = map_to_query(&request);
     match query {
-        Err(_) => HttpResponse::InternalServerError().finish(),
+        Err(err) => {
+            tracing::error!("Failed to map request to query: {:?}", err);
+            HttpResponse::InternalServerError().finish()
+        }
         Ok(query) => {
             let result = context.execute_query(&query).await;
             match result {
-                Err(_) => HttpResponse::InternalServerError().finish(),
+                Err(err) => {
+                    tracing::error!("Failed to execute query: {:?}", err);
+                    HttpResponse::InternalServerError().finish()
+                }
                 Ok(result) => HttpResponse::Ok().json(result),
             }
         }
@@ -28,14 +34,14 @@ struct QueryRequest {
     dimensions: Vec<String>,
 }
 
-fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
+fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, Vec<QueryError>> {
     let metrics: Vec<Result<Metric, QueryError>> = request
         .metrics
         .iter()
-        .map(split_to_parts)
+        .map(|s| split_reference(s))
         .map(|parts| {
             if parts.len() != 2 {
-                return Err(QueryError::InvalidMeasure(parts.join(".")));
+                return Err(QueryError::InvalidMetric(parts.join(".")));
             }
             Ok(Metric::new(parts[1], parts[0]))
         })
@@ -44,7 +50,7 @@ fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
     let dimensions: Vec<Result<Dimension, QueryError>> = request
         .dimensions
         .iter()
-        .map(split_to_parts)
+        .map(|s| split_reference(s))
         .map(|parts| {
             if parts.len() != 2 {
                 return Err(QueryError::InvalidDimension(parts.join(".")));
@@ -55,43 +61,28 @@ fn map_to_query(request: &QueryRequest) -> Result<Query, Vec<QueryError>> {
 
     let mut errors: Vec<QueryError> = metrics
         .iter()
-        .filter(|metric| metric.is_err())
-        .map(|metric| metric.as_ref().err().cloned())
-        .flatten()
+        .filter_map(|r| r.as_ref().err().cloned())
         .collect();
-    errors.append(
-        &mut dimensions
-            .iter()
-            .filter(|dimension| dimension.is_err())
-            .map(|dimension| dimension.as_ref().err().cloned())
-            .flatten()
-            .collect(),
-    );
+    errors.extend(dimensions.iter().filter_map(|r| r.as_ref().err().cloned()));
 
     if !errors.is_empty() {
         return Err(errors);
     }
 
     Ok(Query::new(
-        metrics
-            .into_iter()
-            .filter_map(|metric| metric.ok())
-            .collect(),
-        dimensions
-            .into_iter()
-            .filter_map(|dimension| dimension.ok())
-            .collect(),
+        metrics.into_iter().filter_map(|r| r.ok()).collect(),
+        dimensions.into_iter().filter_map(|r| r.ok()).collect(),
     ))
 }
 
-fn split_to_parts(value: &String) -> Vec<&str> {
+fn split_reference(value: &str) -> Vec<&str> {
     value.split('.').collect()
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
 enum QueryError {
-    #[error("Invalid measure: {0}")]
-    InvalidMeasure(String),
+    #[error("Invalid metric: {0}")]
+    InvalidMetric(String),
     #[error("Invalid dimension: {0}")]
     InvalidDimension(String),
 }

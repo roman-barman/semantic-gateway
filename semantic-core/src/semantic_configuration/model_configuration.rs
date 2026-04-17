@@ -13,7 +13,7 @@ pub struct ModelConfiguration {
 
 impl ModelConfiguration {
     pub(crate) fn table_name(&self) -> &str {
-        &self.table.as_ref()
+        self.table.as_ref()
     }
 
     pub(crate) fn dimension_column(&self, dimension: &str) -> Option<&Field> {

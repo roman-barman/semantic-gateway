@@ -9,9 +9,10 @@ impl<'a> Dimension<'a> {
     }
 
     pub(crate) fn model(&self) -> &str {
-        &self.model
+        self.model
     }
+
     pub(crate) fn name(&self) -> &str {
-        &self.name
+        self.name
     }
 }

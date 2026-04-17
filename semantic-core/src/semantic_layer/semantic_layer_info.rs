@@ -31,6 +31,6 @@ impl SemanticLayerInfo {
         self.layer
             .get(table)
             .and_then(|model| model.get_metric_configuration(metric))
-            .and_then(|metric_config| Some((metric_config.aggregate(), metric_config.field())))
+            .map(|metric_config| (metric_config.aggregate(), metric_config.field()))
     }
 }
