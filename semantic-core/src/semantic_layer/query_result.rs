@@ -3,7 +3,7 @@ use crate::semantic_layer::query_result::column_value::ColumnValue;
 use crate::semantic_layer::query_result::value_type::ValueType;
 use datafusion::arrow::array::{
     Array, Float32Array, Float64Array, Int8Array, Int16Array, Int32Array, Int64Array, StringArray,
-    UInt8Array, UInt16Array, UInt32Array, UInt64Array,
+    StringViewArray, UInt8Array, UInt16Array, UInt32Array, UInt64Array,
 };
 use datafusion::arrow::compute::concat_batches;
 use datafusion::arrow::datatypes::DataType;
@@ -19,6 +19,12 @@ pub struct QueryResult {
     schema: Vec<ColumnMeta>,
     columns: HashMap<String, Vec<ColumnValue>>,
     row_count: usize,
+}
+
+impl QueryResult {
+    pub fn row_count(&self) -> usize {
+        self.row_count
+    }
 }
 
 impl TryFrom<Vec<RecordBatch>> for QueryResult {
@@ -65,7 +71,7 @@ impl TryFrom<Vec<RecordBatch>> for QueryResult {
 
 fn arrow_type_to_value_type(dt: &DataType) -> ValueType {
     match dt {
-        DataType::Utf8 => ValueType::String,
+        DataType::Utf8 | DataType::Utf8View => ValueType::String,
         DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int64 => ValueType::Int,
         DataType::UInt8 | DataType::UInt16 | DataType::UInt32 | DataType::UInt64 => ValueType::UInt,
         DataType::Float32 | DataType::Float64 => ValueType::Float,
@@ -100,6 +106,7 @@ fn serialize_column(array: &dyn Array) -> Result<Vec<ColumnValue>, QueryResultEr
 
     match array.data_type() {
         DataType::Utf8 => cast_array!(StringArray, String),
+        DataType::Utf8View => cast_array!(StringViewArray, String),
         DataType::Int8 => cast_array!(Int8Array, Int),
         DataType::Int16 => cast_array!(Int16Array, Int),
         DataType::Int32 => cast_array!(Int32Array, Int),

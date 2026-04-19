@@ -2,8 +2,10 @@ mod api;
 
 use crate::configuration::Configuration;
 use actix_web::{App, HttpServer, web};
+use semantic_core::data_source::DataSource;
 use semantic_core::{ModelConfiguration, SemanticLayerInfo};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::task::{JoinError, JoinHandle};
 use tracing_actix_web::TracingLogger;
 
@@ -15,8 +17,10 @@ impl WebServer {
     pub(crate) fn start(
         config: &Configuration,
         layer: HashMap<String, ModelConfiguration>,
+        data_source: Arc<dyn DataSource>,
     ) -> Result<Self, WebServerError> {
         let semantic_layer_info = web::Data::new(SemanticLayerInfo::new(layer));
+        let data_source = web::Data::from(data_source);
 
         let server_task = HttpServer::new(move || {
             App::new()
@@ -24,6 +28,7 @@ impl WebServer {
                 .service(api::health)
                 .service(api::execute_query)
                 .app_data(semantic_layer_info.clone())
+                .app_data(data_source.clone())
         })
         .bind(config.server().address())
         .map_err(WebServerError::BindAddress)?

@@ -48,24 +48,6 @@ HTTP 200 { schema, columns, row_count }
 
 ## Architectural Gaps & Roadmap
 
-### Priority 1 — Data Source Abstraction (Critical)
-
-**Problem**: `SemanticLayerContext::create_orders_table()` hardcodes 6 rows of fake data. The server cannot query real data.
-
-**Plan**: Introduce a `DataSource` trait in `semantic-core`:
-
-```rust
-pub trait DataSource: Send + Sync {
-    async fn register(&self, ctx: &SessionContext) -> Result<(), DataSourceError>;
-}
-```
-
-Provide a `ParquetDataSource` implementation (reads `.parquet` files by table name). `SemanticLayerContext` receives `Arc<dyn DataSource>` instead of constructing data internally.
-
-Files: `semantic-core/src/semantic_layer/semantic_layer_context.rs`, new `semantic-core/src/data_source/` module, `semantic-gateway-server/src/main.rs`.
-
----
-
 ### Priority 2 — Query Filters
 
 **Problem**: `Query` carries only metrics and dimensions. No WHERE, HAVING, ORDER BY, or LIMIT support.

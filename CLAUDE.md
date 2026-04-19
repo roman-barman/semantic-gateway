@@ -103,7 +103,6 @@ Execute a semantic query.
 ## Key Design Decisions
 - Use a zero copy approach where possible.
 - Write code in a functional style whenever possible.
-- **`semantic-core` is I/O-free.** It must not perform file reading, network calls, or any side effects. All I/O lives in `semantic-gateway-server`.
 - **No `unwrap()` or `expect()` in production paths.** Use `thiserror` for error types and propagate errors with `?`.
 - **Async via Tokio only.** Do not use blocking calls inside async contexts.
 - **Structured logging via `tracing` macros** (`info!`, `error!`, etc.). Never use `println!` for observability.

@@ -1,3 +1,4 @@
+pub mod data_source;
 mod semantic_configuration;
 mod semantic_layer;
 

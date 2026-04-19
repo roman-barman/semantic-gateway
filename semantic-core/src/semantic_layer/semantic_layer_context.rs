@@ -1,24 +1,26 @@
+use crate::data_source::{DataSource, DataSourceError};
 use crate::semantic_configuration::Aggregate;
 use crate::semantic_layer::query::Query;
 use crate::semantic_layer::query_result::{QueryResult, QueryResultError};
 use crate::semantic_layer::semantic_layer_info::SemanticLayerInfo;
-use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
-use datafusion::arrow::datatypes::{DataType, Field, Schema};
-use datafusion::datasource::MemTable;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::{DataFrame, Expr, SessionContext, col};
-use std::sync::Arc;
 
 pub struct SemanticLayerContext<'a> {
     semantic_layer_info: &'a SemanticLayerInfo,
     context: SessionContext,
+    data_source: &'a dyn DataSource,
 }
 
 impl<'a> SemanticLayerContext<'a> {
-    pub fn new(semantic_layer_info: &'a SemanticLayerInfo) -> Self {
+    pub fn new(
+        semantic_layer_info: &'a SemanticLayerInfo,
+        data_source: &'a dyn DataSource,
+    ) -> Self {
         SemanticLayerContext {
             semantic_layer_info,
             context: SessionContext::new(),
+            data_source,
         }
     }
 
@@ -26,9 +28,7 @@ impl<'a> SemanticLayerContext<'a> {
         self,
         query: &Query<'_>,
     ) -> Result<QueryResult, ExecutionQueryError> {
-        self.context
-            .register_table("orders", create_orders_table())
-            .map_err(ExecutionQueryError::RegisterTable)?;
+        self.data_source.register(&self.context).await?;
         let df = self.build_dataframe(query).await?;
         let result = df
             .collect()
@@ -93,39 +93,10 @@ fn aggregate_expr(aggregation: &Aggregate, field: &str, alias: &str) -> Expr {
     expr.alias(alias)
 }
 
-fn create_orders_table() -> Arc<MemTable> {
-    let schema = Arc::new(Schema::new(vec![
-        Field::new("order_id", DataType::Int64, false),
-        Field::new("country", DataType::Utf8, false),
-        Field::new("amount", DataType::Float64, false),
-        Field::new("status", DataType::Utf8, false),
-    ]));
-    let batch = RecordBatch::try_new(
-        schema.clone(),
-        vec![
-            Arc::new(Int64Array::from(vec![1, 2, 3, 4, 5, 6])),
-            Arc::new(StringArray::from(vec!["GE", "GE", "RU", "RU", "US", "US"])),
-            Arc::new(Float64Array::from(vec![
-                150.0, 200.0, 350.0, 100.0, 500.0, 750.0,
-            ])),
-            Arc::new(StringArray::from(vec![
-                "completed",
-                "completed",
-                "completed",
-                "cancelled",
-                "completed",
-                "completed",
-            ])),
-        ],
-    )
-    .expect("Failed to create RecordBatch");
-    Arc::new(MemTable::try_new(schema, vec![vec![batch]]).expect("Failed to create MemTable"))
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionQueryError {
-    #[error("Failed to register table: {0}")]
-    RegisterTable(DataFusionError),
+    #[error("Data source error: {0}")]
+    DataSource(#[from] DataSourceError),
     #[error("Empty query")]
     EmptyQuery,
     #[error("Failed to create DataFrame: {0}")]
@@ -138,4 +109,106 @@ pub enum ExecutionQueryError {
     InvalidModel(String),
     #[error("Failed to parse query result: {0}")]
     QueryResult(#[from] QueryResultError),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data_source::DataSourceError;
+    use crate::semantic_configuration::ModelConfiguration;
+    use crate::semantic_layer::query::{Dimension, Metric, Query};
+    use crate::semantic_layer::semantic_layer_info::SemanticLayerInfo;
+    use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
+    use datafusion::arrow::datatypes::{DataType, Field, Schema};
+    use datafusion::datasource::MemTable;
+    use datafusion::prelude::SessionContext;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    struct MemDataSource {
+        table_name: String,
+    }
+
+    #[async_trait::async_trait]
+    impl DataSource for MemDataSource {
+        async fn register(&self, ctx: &SessionContext) -> Result<(), DataSourceError> {
+            let schema = Arc::new(Schema::new(vec![
+                Field::new("order_id", DataType::Int64, false),
+                Field::new("country", DataType::Utf8, false),
+                Field::new("amount", DataType::Float64, false),
+                Field::new("status", DataType::Utf8, false),
+            ]));
+            let batch = RecordBatch::try_new(
+                schema.clone(),
+                vec![
+                    Arc::new(Int64Array::from(vec![1i64, 2, 3, 4, 5, 6])),
+                    Arc::new(StringArray::from(vec!["GE", "GE", "RU", "RU", "US", "US"])),
+                    Arc::new(Float64Array::from(vec![
+                        150.0, 200.0, 350.0, 100.0, 500.0, 750.0,
+                    ])),
+                    Arc::new(StringArray::from(vec![
+                        "completed",
+                        "completed",
+                        "completed",
+                        "cancelled",
+                        "completed",
+                        "completed",
+                    ])),
+                ],
+            )
+            .map_err(|e| DataSourceError::RegisterTable {
+                table: self.table_name.clone(),
+                source: e.into(),
+            })?;
+            let table = Arc::new(MemTable::try_new(schema, vec![vec![batch]]).map_err(
+                |source| DataSourceError::RegisterTable {
+                    table: self.table_name.clone(),
+                    source,
+                },
+            )?);
+            ctx.register_table(&self.table_name, table)
+                .map_err(|source| DataSourceError::RegisterTable {
+                    table: self.table_name.clone(),
+                    source,
+                })?;
+            Ok(())
+        }
+    }
+
+    fn make_semantic_layer_info() -> SemanticLayerInfo {
+        let yaml = r#"
+table: orders
+metrics:
+  revenue:
+    title: Revenue
+    aggregate: sum
+    field: amount
+  orders_count:
+    title: Orders Count
+    aggregate: count
+    field: order_id
+dimensions:
+  country:
+    title: Country
+    field: country
+"#;
+        let model: ModelConfiguration = serde_yaml::from_str(yaml).unwrap();
+        SemanticLayerInfo::new(HashMap::from([("orders".to_string(), model)]))
+    }
+
+    #[tokio::test]
+    async fn execute_query_groups_by_dimension() {
+        let info = make_semantic_layer_info();
+        let data_source = MemDataSource {
+            table_name: "orders".to_string(),
+        };
+        let context = SemanticLayerContext::new(&info, &data_source);
+
+        let metrics = vec![Metric::new("revenue", "orders")];
+        let dimensions = vec![Dimension::new("country", "orders")];
+        let query = Query::new(metrics, dimensions);
+
+        let result = context.execute_query(&query).await.unwrap();
+        assert_eq!(result.row_count(), 3);
+    }
 }
