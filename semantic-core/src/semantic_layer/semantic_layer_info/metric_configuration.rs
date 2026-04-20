@@ -1,6 +1,6 @@
-use crate::semantic_configuration::aggregate::Aggregate;
-use crate::semantic_configuration::field::Field;
-use crate::semantic_configuration::title::Title;
+use crate::semantic_layer::semantic_layer_info::aggregate::Aggregate;
+use crate::semantic_layer::semantic_layer_info::field::Field;
+use crate::semantic_layer::semantic_layer_info::title::Title;
 
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 pub(crate) struct MetricConfiguration {

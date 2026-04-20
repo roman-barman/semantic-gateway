@@ -12,24 +12,41 @@
 
 ```
 semantic-gateway/
-├── semantic-core/          # I/O-free query engine and semantic model
-│   ├── semantic_configuration/   # YAML model deserialization
-│   └── semantic_layer/           # Query execution via DataFusion
-└── semantic-gateway-server/      # HTTP server, config, model loading
-    ├── infrastructure/           # Model reader, tracing setup
-    └── web_server/api/           # /health, /query/execute handlers
+├── semantic-core/            # Query engine and semantic model
+│   ├── data_source/          # DataSource trait + ParquetDataSource impl
+│   └── semantic_layer/       # Query execution (DataFusion), metadata, result types
+│       └── semantic_layer_info/  # YAML model deserialization (ModelConfiguration, etc.)
+└── semantic-gateway-server/  # HTTP server, config, model loading
+    ├── infrastructure/       # Model reader (YAML), tracing setup
+    └── web_server/api/       # /health, /query/execute handlers
 ```
+
+### Server Startup
+
+1. CLI args parsed (`--models-dir`, `--data-dir`)
+2. Configuration loaded (`config/base.yaml` → env override → `APP_*` env vars)
+3. Tracing subscriber initialized
+4. YAML models loaded via `read_models()` → `HashMap<String, ModelConfiguration>`
+5. `ParquetDataSource::new(data_dir)` created, wrapped in `Arc<dyn DataSource>`
+6. `SemanticLayerInfo` and `DataSource` stored as Actix `web::Data<>` (shared across requests)
+7. `WebServer::start()` binds and runs
 
 ### Request Flow
 
 ```
 POST /query/execute { metrics, dimensions }
     ↓
-[execute_query handler]   — parses "model.field" references, validates format
+[execute_query handler]       — splits "model.field" refs, builds Query
     ↓
-[SemanticLayerContext]    — builds DataFusion DataFrame (group_by + aggregate)
+[SemanticLayerContext::new]   — receives SemanticLayerInfo + &dyn DataSource
     ↓
-[QueryResult]             — serializes RecordBatch → JSON schema + columns
+[data_source.register()]      — registers Parquet files as DataFusion tables
+    ↓
+[build_dataframe()]           — builds GROUP BY + aggregate logical plan
+    ↓
+[df.collect()]                — executes query, returns Arrow RecordBatches
+    ↓
+[QueryResult]                 — converts RecordBatch → JSON schema + columns
     ↓
 HTTP 200 { schema, columns, row_count }
 ```
@@ -38,17 +55,19 @@ HTTP 200 { schema, columns, row_count }
 
 | Type | Location | Purpose |
 |------|----------|---------|
-| `ModelConfiguration` | `semantic_configuration/` | Deserializes YAML model (table, metrics, dimensions) |
+| `ModelConfiguration` | `semantic_layer/semantic_layer_info/` | Deserializes YAML model (table, metrics, dimensions) |
 | `SemanticLayerInfo` | `semantic_layer/` | Registry: model name → `ModelConfiguration` |
 | `SemanticLayerContext` | `semantic_layer/` | Executes queries via DataFusion |
 | `Query<'a>` | `semantic_layer/query/` | Metrics + dimensions bound to a request lifetime |
 | `QueryResult` | `semantic_layer/query_result/` | Serializable result with schema metadata |
+| `DataSource` | `data_source/` | Trait: registers tables into a DataFusion `SessionContext` |
+| `ParquetDataSource` | `data_source/parquet.rs` | Scans a directory and registers `.parquet` files as tables |
 
 ---
 
 ## Architectural Gaps & Roadmap
 
-### Priority 2 — Query Filters
+### Priority 1 — Query Filters
 
 **Problem**: `Query` carries only metrics and dimensions. No WHERE, HAVING, ORDER BY, or LIMIT support.
 
@@ -68,7 +87,7 @@ Files: `semantic-core/src/semantic_layer/query/`, `semantic_layer_context.rs`, `
 
 ---
 
-### Priority 3 — Structured Error Responses
+### Priority 2 — Structured Error Responses
 
 **Problem**: All errors return HTTP 500 with no body. Clients cannot distinguish validation failures from execution errors.
 
@@ -82,9 +101,9 @@ Map `QueryError` (bad input) → 400, `ExecutionQueryError` (runtime) → 500. I
 
 ---
 
-### Priority 4 — SessionContext Reuse
+### Priority 3 — SessionContext Reuse
 
-**Problem**: A new `SessionContext::new()` is created on every HTTP request. This is expensive — DataFusion context setup is non-trivial.
+**Problem**: A new `SessionContext::new()` is created on every HTTP request inside `SemanticLayerContext::new()`. This is expensive — DataFusion context setup is non-trivial.
 
 **Plan**: Pre-build the `SessionContext` at startup (with data sources already registered) and share it as `Arc<SessionContext>` via Actix `web::Data<>`. Requests create only query expressions, not the full context.
 
@@ -92,7 +111,7 @@ Files: `semantic_layer_context.rs`, `main.rs`, `web_server.rs`.
 
 ---
 
-### Priority 5 — Test Infrastructure
+### Priority 4 — Test Infrastructure
 
 **Problem**: Only YAML deserialization in `model_configuration.rs` is tested. No tests for query execution, HTTP endpoints, or error handling paths.
 

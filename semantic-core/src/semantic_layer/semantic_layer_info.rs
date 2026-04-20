@@ -1,5 +1,14 @@
-use crate::ModelConfiguration;
-use crate::semantic_configuration::{Aggregate, Field};
+mod aggregate;
+mod dimension_configuration;
+mod field;
+mod metric_configuration;
+mod model_configuration;
+mod table;
+mod title;
+
+pub(crate) use crate::semantic_layer::semantic_layer_info::aggregate::Aggregate;
+use crate::semantic_layer::semantic_layer_info::field::Field;
+pub use crate::semantic_layer::semantic_layer_info::model_configuration::ModelConfiguration;
 use std::collections::HashMap;
 
 pub struct SemanticLayerInfo {
