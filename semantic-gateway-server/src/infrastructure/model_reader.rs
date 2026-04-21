@@ -2,15 +2,14 @@ use semantic_core::ModelConfiguration;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub(crate) fn read_models(
+pub(crate) async fn read_models(
     path: &PathBuf,
 ) -> Result<HashMap<String, ModelConfiguration>, ReadModelsError> {
     let mut models = HashMap::new();
-    for dir_entry in std::fs::read_dir(path).map_err(ReadModelsError::ReadDir)? {
-        let dir_entry = dir_entry?;
-
-        if dir_entry.file_type()?.is_file() {
-            let path = dir_entry.path();
+    let mut entries = tokio::fs::read_dir(path).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        if entry.file_type().await?.is_file() {
+            let path = entry.path();
             let extension = path.extension();
             if let Some(extension) = extension.and_then(|e| e.to_str())
                 && (extension == "yaml" || extension == "yml")
@@ -33,8 +32,6 @@ pub(crate) fn read_models(
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum ReadModelsError {
-    #[error("Read model directory error: {0}")]
-    ReadDir(std::io::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("YAML error: {0}")]

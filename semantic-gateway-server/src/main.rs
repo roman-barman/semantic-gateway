@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_arguments = server_arguments::ServerArguments::parse();
     let config = configuration::Configuration::read_configuration()?;
     initialize_tracing_subscribe(config.server().log_level())?;
-    let models = read_models(server_arguments.models_dir())?;
+    let models = read_models(server_arguments.models_dir()).await?;
     info!("Loaded {} models", models.len());
 
     let data_source = Arc::new(ParquetDataSource::new(server_arguments.data_dir().clone())?);

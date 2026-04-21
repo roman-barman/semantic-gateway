@@ -10,7 +10,7 @@ datafusion = "52"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 async-trait = "0.1"
-tokio = { workspace = true, features = ["fs"] }
+tokio = { workspace = true }
 
 [dev-dependencies]
 serde_yaml = { workspace = true }
