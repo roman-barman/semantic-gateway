@@ -6,9 +6,9 @@ mod model_configuration;
 mod table;
 mod title;
 
-pub(crate) use crate::semantic_layer::semantic_layer_info::aggregate::Aggregate;
-use crate::semantic_layer::semantic_layer_info::field::Field;
-pub use crate::semantic_layer::semantic_layer_info::model_configuration::ModelConfiguration;
+pub(crate) use crate::semantic_layer::layer_info::aggregate::Aggregate;
+use crate::semantic_layer::layer_info::field::Field;
+pub use crate::semantic_layer::layer_info::model_configuration::ModelConfiguration;
 use std::collections::HashMap;
 
 pub struct SemanticLayerInfo {

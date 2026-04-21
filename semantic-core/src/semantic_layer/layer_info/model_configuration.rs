@@ -1,7 +1,7 @@
-use crate::semantic_layer::semantic_layer_info::dimension_configuration::DimensionConfiguration;
-use crate::semantic_layer::semantic_layer_info::field::Field;
-use crate::semantic_layer::semantic_layer_info::metric_configuration::MetricConfiguration;
-use crate::semantic_layer::semantic_layer_info::table::Table;
+use crate::semantic_layer::layer_info::dimension_configuration::DimensionConfiguration;
+use crate::semantic_layer::layer_info::field::Field;
+use crate::semantic_layer::layer_info::metric_configuration::MetricConfiguration;
+use crate::semantic_layer::layer_info::table::Table;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -28,7 +28,7 @@ impl ModelConfiguration {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::semantic_layer::semantic_layer_info::aggregate::Aggregate;
+    use crate::semantic_layer::layer_info::aggregate::Aggregate;
 
     #[test]
     fn test_model_configuration_deserialization() {

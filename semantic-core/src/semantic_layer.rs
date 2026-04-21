@@ -1,7 +1,7 @@
+mod context;
+mod layer_info;
 pub mod query;
 pub mod query_result;
-mod semantic_layer_context;
-mod semantic_layer_info;
 
-pub use semantic_layer_context::SemanticLayerContext;
-pub use semantic_layer_info::{ModelConfiguration, SemanticLayerInfo};
+pub use context::SemanticLayerContext;
+pub use layer_info::{ModelConfiguration, SemanticLayerInfo};

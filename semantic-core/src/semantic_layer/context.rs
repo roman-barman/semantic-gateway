@@ -1,7 +1,7 @@
 use crate::data_source::{DataSource, DataSourceError};
+use crate::semantic_layer::layer_info::{Aggregate, SemanticLayerInfo};
 use crate::semantic_layer::query::Query;
 use crate::semantic_layer::query_result::{QueryResult, QueryResultError};
-use crate::semantic_layer::semantic_layer_info::{Aggregate, SemanticLayerInfo};
 use datafusion::error::DataFusionError;
 use datafusion::prelude::{DataFrame, Expr, SessionContext, col};
 
@@ -114,8 +114,8 @@ pub enum ExecutionQueryError {
 mod tests {
     use super::*;
     use crate::data_source::DataSourceError;
+    use crate::semantic_layer::layer_info::{ModelConfiguration, SemanticLayerInfo};
     use crate::semantic_layer::query::{Dimension, Metric, Query};
-    use crate::semantic_layer::semantic_layer_info::{ModelConfiguration, SemanticLayerInfo};
     use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
     use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion::datasource::MemTable;
