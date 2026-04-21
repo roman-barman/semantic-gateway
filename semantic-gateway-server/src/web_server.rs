@@ -3,7 +3,7 @@ mod api;
 use crate::configuration::Configuration;
 use actix_web::{App, HttpServer, web};
 use semantic_core::data_source::DataSource;
-use semantic_core::{ModelConfiguration, SemanticLayerInfo};
+use semantic_core::{ModelConfiguration, SemanticLayerContextFactory, SemanticLayerInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::task::{JoinError, JoinHandle};
@@ -19,16 +19,17 @@ impl WebServer {
         layer: HashMap<String, ModelConfiguration>,
         data_source: Arc<dyn DataSource>,
     ) -> Result<Self, WebServerError> {
-        let semantic_layer_info = web::Data::new(SemanticLayerInfo::new(layer));
-        let data_source = web::Data::from(data_source);
+        let semantic_layer_info = Arc::new(SemanticLayerInfo::new(layer));
+        let semantic_layer_context_factory =
+            SemanticLayerContextFactory::new(semantic_layer_info, data_source);
+        let semantic_layer_context_factory = web::Data::new(semantic_layer_context_factory);
 
         let server_task = HttpServer::new(move || {
             App::new()
                 .wrap(TracingLogger::default())
                 .service(api::health)
                 .service(api::execute_query)
-                .app_data(semantic_layer_info.clone())
-                .app_data(data_source.clone())
+                .app_data(semantic_layer_context_factory.clone())
         })
         .bind(config.server().address())
         .map_err(WebServerError::BindAddress)?

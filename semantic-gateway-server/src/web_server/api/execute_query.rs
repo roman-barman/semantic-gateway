@@ -1,16 +1,14 @@
 use actix_web::{HttpResponse, post, web};
-use semantic_core::data_source::DataSource;
+use semantic_core::SemanticLayerContextFactory;
 use semantic_core::query::{Dimension, Metric, Query};
-use semantic_core::{SemanticLayerContext, SemanticLayerInfo};
 
 #[post("/query/execute")]
-#[tracing::instrument(name = "Execute query", skip(semantic_layer_info, data_source))]
+#[tracing::instrument(name = "Execute query", skip(context_factory))]
 pub(crate) async fn execute_query(
-    semantic_layer_info: web::Data<SemanticLayerInfo>,
-    data_source: web::Data<dyn DataSource>,
+    context_factory: web::Data<SemanticLayerContextFactory>,
     request: web::Json<QueryRequest>,
 ) -> HttpResponse {
-    let context = SemanticLayerContext::new(&semantic_layer_info, data_source.as_ref());
+    let context = context_factory.create();
     let query = map_to_query(&request);
     match query {
         Err(err) => {

@@ -1,24 +1,40 @@
+mod factory;
+
 use crate::data_source::{DataSource, DataSourceError};
 use crate::semantic_layer::layer_info::{Aggregate, SemanticLayerInfo};
 use crate::semantic_layer::query::Query;
 use crate::semantic_layer::query_result::{QueryResult, QueryResultError};
 use datafusion::error::DataFusionError;
 use datafusion::prelude::{DataFrame, Expr, SessionContext, col};
+pub use factory::SemanticLayerContextFactory;
+use std::sync::Arc;
 
-pub struct SemanticLayerContext<'a> {
-    semantic_layer_info: &'a SemanticLayerInfo,
+pub struct SemanticLayerContext {
+    semantic_layer_info: Arc<SemanticLayerInfo>,
     context: SessionContext,
-    data_source: &'a dyn DataSource,
+    data_source: Arc<dyn DataSource>,
 }
 
-impl<'a> SemanticLayerContext<'a> {
+impl SemanticLayerContext {
     pub fn new(
-        semantic_layer_info: &'a SemanticLayerInfo,
-        data_source: &'a dyn DataSource,
+        semantic_layer_info: Arc<SemanticLayerInfo>,
+        data_source: Arc<dyn DataSource>,
     ) -> Self {
         SemanticLayerContext {
             semantic_layer_info,
             context: SessionContext::new(),
+            data_source,
+        }
+    }
+
+    pub fn new_with_context(
+        session_context: SessionContext,
+        semantic_layer_info: Arc<SemanticLayerInfo>,
+        data_source: Arc<dyn DataSource>,
+    ) -> Self {
+        SemanticLayerContext {
+            semantic_layer_info,
+            context: session_context,
             data_source,
         }
     }
@@ -37,7 +53,7 @@ impl<'a> SemanticLayerContext<'a> {
         Ok(QueryResult::try_from(result)?)
     }
 
-    async fn build_dataframe(&self, query: &Query<'a>) -> Result<DataFrame, ExecutionQueryError> {
+    async fn build_dataframe(&self, query: &Query<'_>) -> Result<DataFrame, ExecutionQueryError> {
         let model = query
             .models()
             .iter()
@@ -200,7 +216,7 @@ dimensions:
         let data_source = MemDataSource {
             table_name: "orders".to_string(),
         };
-        let context = SemanticLayerContext::new(&info, &data_source);
+        let context = SemanticLayerContext::new(Arc::new(info), Arc::new(data_source));
 
         let metrics = vec![Metric::new("revenue", "orders")];
         let dimensions = vec![Dimension::new("country", "orders")];

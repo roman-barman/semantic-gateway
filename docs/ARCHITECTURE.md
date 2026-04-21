@@ -101,17 +101,7 @@ Map `QueryError` (bad input) → 400, `ExecutionQueryError` (runtime) → 500. I
 
 ---
 
-### Priority 3 — SessionContext Reuse
-
-**Problem**: A new `SessionContext::new()` is created on every HTTP request inside `SemanticLayerContext::new()`. This is expensive — DataFusion context setup is non-trivial.
-
-**Plan**: Pre-build the `SessionContext` at startup (with data sources already registered) and share it as `Arc<SessionContext>` via Actix `web::Data<>`. Requests create only query expressions, not the full context.
-
-Files: `semantic_layer_context.rs`, `main.rs`, `web_server.rs`.
-
----
-
-### Priority 4 — Test Infrastructure
+### Priority 3 — Test Infrastructure
 
 **Problem**: Only YAML deserialization in `model_configuration.rs` is tested. No tests for query execution, HTTP endpoints, or error handling paths.
 
