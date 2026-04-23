@@ -93,36 +93,6 @@ impl Serialize for QueryResult {
 
 `ColumnValue` and its file (`column_value.rs`) can be deleted entirely.
 
----
-
-### 2. `split_reference` → `split_once`
-
-**File:** `semantic-gateway-server/src/web_server/api/execute_query.rs`
-
-```rust
-// before: allocates Vec<&str> for every "model.field" string
-fn split_reference(value: &str) -> Vec<&str> {
-    value.split('.').collect()
-}
-
-// after: returns Option<(&str, &str)>, no allocation
-fn split_reference(value: &str) -> Option<(&str, &str)> {
-    value.split_once('.')
-}
-```
-
-Updated call site in `map_to_query`:
-
-```rust
-request.metrics.iter().map(|s| {
-    split_reference(s)
-        .ok_or_else(|| QueryError::InvalidMetric(s.clone()))
-        .map(|(model, name)| Metric::new(name, model))
-})
-```
-
----
-
 ## Files Affected
 
 | File | Change |
@@ -130,7 +100,6 @@ request.metrics.iter().map(|s| {
 | `semantic-core/src/semantic_layer/query_result.rs` | Major refactor: `into_parts()`, manual `Serialize` |
 | `semantic-core/src/semantic_layer/query_result/column_value.rs` | Delete |
 | `semantic-core/src/lib.rs` | Remove `pub use ColumnValue` if exported |
-| `semantic-gateway-server/src/web_server/api/execute_query.rs` | `split_reference` → `split_once` |
 
 ---
 
@@ -140,6 +109,5 @@ request.metrics.iter().map(|s| {
 |---|---|
 | Arrow direct serialization | `N_rows × N_string_columns` per request |
 | `into_parts()` | 0 (was already O(1) Arc clone; now O(1) Arc move) |
-| `split_once` | `N_metrics + N_dimensions` Vec allocs per request |
 
 JSON response format is unchanged.

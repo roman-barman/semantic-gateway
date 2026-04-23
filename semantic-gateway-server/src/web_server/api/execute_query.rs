@@ -39,11 +39,15 @@ fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, Vec<QueryError>> {
         .metrics
         .iter()
         .map(|s| split_reference(s))
-        .map(|parts| {
-            if parts.len() != 2 {
-                return Err(QueryError::InvalidMetric(parts.join(".")));
+        .map(|parts| match parts {
+            None => Err(QueryError::InvalidMetric("".to_string())),
+            Some((model, name)) => {
+                if model.is_empty() || name.is_empty() {
+                    Err(QueryError::InvalidMetric(format!("{}.{}", model, name)))
+                } else {
+                    Ok(Metric::new(name, model))
+                }
             }
-            Ok(Metric::new(parts[1], parts[0]))
         })
         .collect();
 
@@ -51,11 +55,15 @@ fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, Vec<QueryError>> {
         .dimensions
         .iter()
         .map(|s| split_reference(s))
-        .map(|parts| {
-            if parts.len() != 2 {
-                return Err(QueryError::InvalidDimension(parts.join(".")));
+        .map(|parts| match parts {
+            None => Err(QueryError::InvalidDimension("".to_string())),
+            Some((model, name)) => {
+                if model.is_empty() || name.is_empty() {
+                    Err(QueryError::InvalidDimension(format!("{}.{}", model, name)))
+                } else {
+                    Ok(Dimension::new(name, model))
+                }
             }
-            Ok(Dimension::new(parts[1], parts[0]))
         })
         .collect();
 
@@ -75,8 +83,8 @@ fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, Vec<QueryError>> {
     ))
 }
 
-fn split_reference(value: &str) -> Vec<&str> {
-    value.split('.').collect()
+fn split_reference(value: &str) -> Option<(&str, &str)> {
+    value.split_once('.')
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
