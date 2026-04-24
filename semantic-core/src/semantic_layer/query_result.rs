@@ -1,23 +1,22 @@
 use crate::semantic_layer::query_result::column_meta::ColumnMeta;
-use crate::semantic_layer::query_result::column_value::ColumnValue;
 use crate::semantic_layer::query_result::value_type::ValueType;
 use datafusion::arrow::array::{
-    Array, Float32Array, Float64Array, Int8Array, Int16Array, Int32Array, Int64Array, StringArray,
-    StringViewArray, UInt8Array, UInt16Array, UInt32Array, UInt64Array,
+    Array, ArrayRef, Float32Array, Float64Array, Int8Array, Int16Array, Int32Array, Int64Array,
+    StringArray, StringViewArray, UInt8Array, UInt16Array, UInt32Array, UInt64Array,
 };
 use datafusion::arrow::compute::concat_batches;
 use datafusion::arrow::datatypes::DataType;
 use datafusion::arrow::record_batch::RecordBatch;
-use std::collections::HashMap;
+use serde::ser::{SerializeMap, SerializeSeq};
+use serde::{Serialize, Serializer};
 
 mod column_meta;
-mod column_value;
 mod value_type;
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug)]
 pub struct QueryResult {
     schema: Vec<ColumnMeta>,
-    columns: HashMap<String, Vec<ColumnValue>>,
+    columns: Vec<(String, ArrayRef)>,
     row_count: usize,
 }
 
@@ -33,7 +32,7 @@ impl TryFrom<Vec<RecordBatch>> for QueryResult {
         if value.is_empty() {
             return Ok(Self {
                 schema: vec![],
-                columns: HashMap::new(),
+                columns: vec![],
                 row_count: 0,
             });
         }
@@ -43,28 +42,25 @@ impl TryFrom<Vec<RecordBatch>> for QueryResult {
             .ok_or(QueryResultError::Unexpected("invalid vector".to_string()))?
             .schema();
         let batch = concat_batches(&schema, &value).map_err(|_| QueryResultError::InvalidSchema)?;
-        let schema = batch.schema();
+        let (schema, arrays, row_count) = batch.into_parts();
+
         let schema_result = schema
             .fields()
             .iter()
-            .map(|field| {
-                ColumnMeta::new(
-                    field.name().to_string(),
-                    arrow_type_to_value_type(field.data_type()),
-                )
-            })
+            .map(|f| ColumnMeta::new(f.name().clone(), arrow_type_to_value_type(f.data_type())))
             .collect();
-        let mut result = HashMap::new();
-        for col_idx in 0..batch.num_columns() {
-            let name = schema.field(col_idx).name().to_string();
-            let array = batch.column(col_idx);
-            result.insert(name, serialize_column(array)?);
-        }
+
+        let columns = schema
+            .fields()
+            .iter()
+            .zip(arrays)
+            .map(|(f, arr)| (f.name().clone(), arr))
+            .collect();
 
         Ok(Self {
             schema: schema_result,
-            columns: result,
-            row_count: batch.num_rows(),
+            columns,
+            row_count,
         })
     }
 }
@@ -79,45 +75,96 @@ fn arrow_type_to_value_type(dt: &DataType) -> ValueType {
     }
 }
 
-fn serialize_column(array: &dyn Array) -> Result<Vec<ColumnValue>, QueryResultError> {
-    let len = array.len();
+struct SerializableColumn<'a>(&'a dyn Array);
 
-    macro_rules! cast_array {
-        ($arr_type:ty, $variant:ident) => {{
-            let arr =
-                array
+impl Serialize for SerializableColumn<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let arr = self.0;
+        let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+
+        macro_rules! serialize_primitive {
+            ($arr_type:ty, $wide:ty) => {{
+                let arr = arr
                     .as_any()
                     .downcast_ref::<$arr_type>()
-                    .ok_or(QueryResultError::Unexpected(
-                        "invalid array type".to_string(),
-                    ))?;
-            let result = (0..len)
-                .map(|i| {
+                    .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
+                for i in 0..arr.len() {
                     if arr.is_null(i) {
-                        ColumnValue::Null
+                        seq.serialize_element(&Option::<$wide>::None)?;
                     } else {
-                        ColumnValue::$variant(arr.value(i).into())
+                        seq.serialize_element(&(arr.value(i) as $wide))?;
                     }
-                })
-                .collect();
-            Ok(result)
-        }};
-    }
+                }
+            }};
+        }
 
-    match array.data_type() {
-        DataType::Utf8 => cast_array!(StringArray, String),
-        DataType::Utf8View => cast_array!(StringViewArray, String),
-        DataType::Int8 => cast_array!(Int8Array, Int),
-        DataType::Int16 => cast_array!(Int16Array, Int),
-        DataType::Int32 => cast_array!(Int32Array, Int),
-        DataType::Int64 => cast_array!(Int64Array, Int),
-        DataType::UInt8 => cast_array!(UInt8Array, UInt),
-        DataType::UInt16 => cast_array!(UInt16Array, UInt),
-        DataType::UInt32 => cast_array!(UInt32Array, UInt),
-        DataType::UInt64 => cast_array!(UInt64Array, UInt),
-        DataType::Float32 => cast_array!(Float32Array, Float),
-        DataType::Float64 => cast_array!(Float64Array, Float),
-        _ => Ok(vec![ColumnValue::Null; len]),
+        match arr.data_type() {
+            DataType::Utf8 => {
+                let arr = arr
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
+                for i in 0..arr.len() {
+                    if arr.is_null(i) {
+                        seq.serialize_element(&Option::<&str>::None)?;
+                    } else {
+                        seq.serialize_element(arr.value(i))?;
+                    }
+                }
+            }
+            DataType::Utf8View => {
+                let arr = arr
+                    .as_any()
+                    .downcast_ref::<StringViewArray>()
+                    .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
+                for i in 0..arr.len() {
+                    if arr.is_null(i) {
+                        seq.serialize_element(&Option::<&str>::None)?;
+                    } else {
+                        seq.serialize_element(arr.value(i))?;
+                    }
+                }
+            }
+            DataType::Int8 => serialize_primitive!(Int8Array, i64),
+            DataType::Int16 => serialize_primitive!(Int16Array, i64),
+            DataType::Int32 => serialize_primitive!(Int32Array, i64),
+            DataType::Int64 => serialize_primitive!(Int64Array, i64),
+            DataType::UInt8 => serialize_primitive!(UInt8Array, u64),
+            DataType::UInt16 => serialize_primitive!(UInt16Array, u64),
+            DataType::UInt32 => serialize_primitive!(UInt32Array, u64),
+            DataType::UInt64 => serialize_primitive!(UInt64Array, u64),
+            DataType::Float32 => serialize_primitive!(Float32Array, f64),
+            DataType::Float64 => serialize_primitive!(Float64Array, f64),
+            _ => {
+                for _ in 0..arr.len() {
+                    seq.serialize_element(&Option::<()>::None)?;
+                }
+            }
+        }
+
+        seq.end()
+    }
+}
+
+struct SerializableColumns<'a>(&'a [(String, ArrayRef)]);
+
+impl Serialize for SerializableColumns<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for (name, arr) in self.0 {
+            map.serialize_entry(name, &SerializableColumn(arr.as_ref()))?;
+        }
+        map.end()
+    }
+}
+
+impl Serialize for QueryResult {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(3))?;
+        map.serialize_entry("schema", &self.schema)?;
+        map.serialize_entry("columns", &SerializableColumns(&self.columns))?;
+        map.serialize_entry("row_count", &self.row_count)?;
+        map.end()
     }
 }
 
