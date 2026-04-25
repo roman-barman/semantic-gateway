@@ -1,9 +1,6 @@
-pub use crate::semantic_layer::query::dimension::Dimension;
-pub use crate::semantic_layer::query::metric::Metric;
+use crate::dimension::Dimension;
+use crate::metric::Metric;
 use std::collections::HashSet;
-
-mod dimension;
-mod metric;
 
 pub struct Query<'a> {
     metrics: Vec<Metric<'a>>,

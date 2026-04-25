@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, post, web};
-use semantic_core::SemanticLayerContextFactory;
-use semantic_core::query::{Dimension, Metric, Query};
+use semantic_core::query::Query;
+use semantic_core::{Dimension, Metric, SemanticLayerContextFactory};
 
 #[post("/query/execute")]
 #[tracing::instrument(name = "Execute query", skip(context_factory))]

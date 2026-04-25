@@ -1,6 +1,7 @@
 use crate::semantic_layer::layer_info::dimension_configuration::DimensionConfiguration;
 use crate::semantic_layer::layer_info::metric_configuration::MetricConfiguration;
 use crate::semantic_layer::layer_info::table::Table;
+use crate::{Dimension, Metric};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -15,12 +16,15 @@ impl ModelConfiguration {
         &self.table
     }
 
-    pub(crate) fn dimension_config(&self, dimension: &str) -> Option<&DimensionConfiguration> {
-        self.dimensions.get(dimension)
+    pub(crate) fn dimension_config(
+        &self,
+        dimension: &Dimension,
+    ) -> Option<&DimensionConfiguration> {
+        self.dimensions.get(dimension.name())
     }
 
-    pub(crate) fn metric_config(&self, metric: &str) -> Option<&MetricConfiguration> {
-        self.metrics.get(metric)
+    pub(crate) fn metric_config(&self, metric: &Metric) -> Option<&MetricConfiguration> {
+        self.metrics.get(metric.name())
     }
 }
 

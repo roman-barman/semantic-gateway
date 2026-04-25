@@ -11,6 +11,7 @@ use crate::semantic_layer::layer_info::dimension_configuration::DimensionConfigu
 use crate::semantic_layer::layer_info::metric_configuration::MetricConfiguration;
 pub use crate::semantic_layer::layer_info::model_configuration::ModelConfiguration;
 use crate::semantic_layer::layer_info::table::Table;
+use crate::{Dimension, Metric};
 use std::collections::HashMap;
 
 pub struct SemanticLayerInfo {
@@ -30,17 +31,16 @@ impl SemanticLayerInfo {
 
     pub(crate) fn dimension_config(
         &self,
-        model: &str,
-        dimension: &str,
+        dimension: &Dimension,
     ) -> Option<&DimensionConfiguration> {
         self.layer
-            .get(model)
+            .get(dimension.model())
             .and_then(|model| model.dimension_config(dimension))
     }
 
-    pub(crate) fn metric_config(&self, table: &str, metric: &str) -> Option<&MetricConfiguration> {
+    pub(crate) fn metric_config(&self, metric: &Metric) -> Option<&MetricConfiguration> {
         self.layer
-            .get(table)
+            .get(metric.model())
             .and_then(|model| model.metric_config(metric))
     }
 }

@@ -74,7 +74,7 @@ impl SemanticLayerContext {
             .iter()
             .filter_map(|dimension| {
                 self.semantic_layer_info
-                    .dimension_config(dimension.model(), dimension.name())
+                    .dimension_config(dimension)
                     .map(|config| col(config.field().as_ref()))
             })
             .collect();
@@ -83,7 +83,7 @@ impl SemanticLayerContext {
             .iter()
             .filter_map(|metric| {
                 self.semantic_layer_info
-                    .metric_config(metric.model(), metric.name())
+                    .metric_config(metric)
                     .map(|config| {
                         aggregate_expr(config.aggregate(), config.field().as_ref(), metric.name())
                     })
@@ -130,8 +130,10 @@ pub enum ExecutionQueryError {
 mod tests {
     use super::*;
     use crate::data_source::DataSourceError;
+    use crate::dimension::Dimension;
+    use crate::metric::Metric;
     use crate::semantic_layer::layer_info::{ModelConfiguration, SemanticLayerInfo};
-    use crate::semantic_layer::query::{Dimension, Metric, Query};
+    use crate::semantic_layer::query::Query;
     use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
     use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion::datasource::MemTable;
