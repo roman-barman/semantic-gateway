@@ -9,6 +9,7 @@ mod title;
 pub(crate) use crate::semantic_layer::layer_info::aggregate::Aggregate;
 use crate::semantic_layer::layer_info::field::Field;
 pub use crate::semantic_layer::layer_info::model_configuration::ModelConfiguration;
+use crate::semantic_layer::layer_info::table::Table;
 use std::collections::HashMap;
 
 pub struct SemanticLayerInfo {
@@ -20,10 +21,10 @@ impl SemanticLayerInfo {
         Self { layer }
     }
 
-    pub(crate) fn table(&self, model: &str) -> Option<&str> {
+    pub(crate) fn table(&self, model: &str) -> Option<&Table> {
         self.layer
             .get(model)
-            .map(|model_config| model_config.table_name())
+            .map(|model_config| model_config.table())
     }
 
     pub(crate) fn get_dimension_column(&self, model: &str, dimension: &str) -> Option<&Field> {

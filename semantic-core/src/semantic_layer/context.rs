@@ -66,7 +66,7 @@ impl SemanticLayerContext {
             .ok_or(ExecutionQueryError::InvalidModel(model.to_string()))?;
         let mut df = self
             .context
-            .table(table)
+            .table(table.as_ref())
             .await
             .map_err(ExecutionQueryError::DataFrameCreation)?;
         let group_by: Vec<Expr> = query

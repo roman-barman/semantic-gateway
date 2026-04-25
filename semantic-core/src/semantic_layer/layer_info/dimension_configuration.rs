@@ -2,7 +2,7 @@ use crate::semantic_layer::layer_info::field::Field;
 use crate::semantic_layer::layer_info::title::Title;
 
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
-pub(super) struct DimensionConfiguration {
+pub(crate) struct DimensionConfiguration {
     title: Title,
     field: Field,
 }

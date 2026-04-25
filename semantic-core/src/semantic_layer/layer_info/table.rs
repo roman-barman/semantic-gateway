@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
-pub(super) struct Table(String);
+pub(crate) struct Table(String);
 
 impl AsRef<str> for Table {
     fn as_ref(&self) -> &str {
