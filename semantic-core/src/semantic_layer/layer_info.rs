@@ -7,7 +7,8 @@ mod table;
 mod title;
 
 pub(crate) use crate::semantic_layer::layer_info::aggregate::Aggregate;
-use crate::semantic_layer::layer_info::field::Field;
+use crate::semantic_layer::layer_info::dimension_configuration::DimensionConfiguration;
+use crate::semantic_layer::layer_info::metric_configuration::MetricConfiguration;
 pub use crate::semantic_layer::layer_info::model_configuration::ModelConfiguration;
 use crate::semantic_layer::layer_info::table::Table;
 use std::collections::HashMap;
@@ -27,20 +28,19 @@ impl SemanticLayerInfo {
             .map(|model_config| model_config.table())
     }
 
-    pub(crate) fn get_dimension_column(&self, model: &str, dimension: &str) -> Option<&Field> {
+    pub(crate) fn dimension_config(
+        &self,
+        model: &str,
+        dimension: &str,
+    ) -> Option<&DimensionConfiguration> {
         self.layer
             .get(model)
-            .and_then(|model| model.dimension_column(dimension))
+            .and_then(|model| model.dimension_config(dimension))
     }
 
-    pub(crate) fn get_metric_info(
-        &self,
-        table: &str,
-        metric: &str,
-    ) -> Option<(&Aggregate, &Field)> {
+    pub(crate) fn metric_config(&self, table: &str, metric: &str) -> Option<&MetricConfiguration> {
         self.layer
             .get(table)
-            .and_then(|model| model.get_metric_configuration(metric))
-            .map(|metric_config| (metric_config.aggregate(), metric_config.field()))
+            .and_then(|model| model.metric_config(metric))
     }
 }

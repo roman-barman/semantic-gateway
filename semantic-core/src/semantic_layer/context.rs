@@ -74,8 +74,8 @@ impl SemanticLayerContext {
             .iter()
             .filter_map(|dimension| {
                 self.semantic_layer_info
-                    .get_dimension_column(dimension.model(), dimension.name())
-                    .map(|field| col(field.as_ref()))
+                    .dimension_config(dimension.model(), dimension.name())
+                    .map(|config| col(config.field().as_ref()))
             })
             .collect();
         let aggregate: Vec<Expr> = query
@@ -83,9 +83,9 @@ impl SemanticLayerContext {
             .iter()
             .filter_map(|metric| {
                 self.semantic_layer_info
-                    .get_metric_info(metric.model(), metric.name())
-                    .map(|(aggregate, field)| {
-                        aggregate_expr(aggregate, field.as_ref(), metric.name())
+                    .metric_config(metric.model(), metric.name())
+                    .map(|config| {
+                        aggregate_expr(config.aggregate(), config.field().as_ref(), metric.name())
                     })
             })
             .collect();

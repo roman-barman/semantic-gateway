@@ -1,5 +1,4 @@
 use crate::semantic_layer::layer_info::dimension_configuration::DimensionConfiguration;
-use crate::semantic_layer::layer_info::field::Field;
 use crate::semantic_layer::layer_info::metric_configuration::MetricConfiguration;
 use crate::semantic_layer::layer_info::table::Table;
 use std::collections::HashMap;
@@ -16,11 +15,11 @@ impl ModelConfiguration {
         &self.table
     }
 
-    pub(crate) fn dimension_column(&self, dimension: &str) -> Option<&Field> {
-        self.dimensions.get(dimension).map(|dim| dim.field())
+    pub(crate) fn dimension_config(&self, dimension: &str) -> Option<&DimensionConfiguration> {
+        self.dimensions.get(dimension)
     }
 
-    pub(crate) fn get_metric_configuration(&self, metric: &str) -> Option<&MetricConfiguration> {
+    pub(crate) fn metric_config(&self, metric: &str) -> Option<&MetricConfiguration> {
         self.metrics.get(metric)
     }
 }
