@@ -48,6 +48,6 @@ impl DataSource for ParquetDataSource {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParquetDataSourceError {
-    #[error("Data source path is not a directory: {0}")]
+    #[error("data source path is not a directory: {0}")]
     NotADirectory(PathBuf),
 }

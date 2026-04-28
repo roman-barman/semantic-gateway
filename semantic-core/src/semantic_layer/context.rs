@@ -110,19 +110,19 @@ fn aggregate_expr(aggregation: &Aggregate, field: &str, alias: &str) -> Expr {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionQueryError {
-    #[error("Data source error: {0}")]
+    #[error("data source error: {0}")]
     DataSource(#[from] DataSourceError),
-    #[error("Empty query")]
+    #[error("empty query")]
     EmptyQuery,
-    #[error("Failed to create DataFrame: {0}")]
+    #[error("failed to create DataFrame: {0}")]
     DataFrameCreation(DataFusionError),
-    #[error("Failed to create aggregation: {0}")]
+    #[error("failed to create aggregation: {0}")]
     AggregationCreation(DataFusionError),
-    #[error("Failed to execute query: {0}")]
+    #[error("failed to execute query: {0}")]
     QueryExecution(DataFusionError),
-    #[error("Invalid model: {0}")]
+    #[error("invalid model: {0}")]
     InvalidModel(String),
-    #[error("Failed to parse query result: {0}")]
+    #[error("failed to parse query result: {0}")]
     QueryResult(#[from] QueryResultError),
 }
 

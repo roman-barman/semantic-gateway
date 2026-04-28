@@ -1,4 +1,5 @@
 mod api;
+mod error;
 
 use crate::configuration::Configuration;
 use actix_web::{App, HttpServer, web};

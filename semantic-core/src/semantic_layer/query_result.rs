@@ -39,7 +39,9 @@ impl TryFrom<Vec<RecordBatch>> for QueryResult {
 
         let schema = value
             .first()
-            .ok_or(QueryResultError::Unexpected("invalid vector".to_string()))?
+            .ok_or(QueryResultError::Unexpected(
+                "invalid record batch vector".to_string(),
+            ))?
             .schema();
         let batch = concat_batches(&schema, &value).map_err(|_| QueryResultError::InvalidSchema)?;
         let (schema, arrays, row_count) = batch.into_parts();
@@ -170,8 +172,8 @@ impl Serialize for QueryResult {
 
 #[derive(Debug, thiserror::Error)]
 pub enum QueryResultError {
-    #[error("Unexpected error: {0}")]
+    #[error("unexpected error: {0}")]
     Unexpected(String),
-    #[error("Invalid schema")]
+    #[error("invalid schema")]
     InvalidSchema,
 }

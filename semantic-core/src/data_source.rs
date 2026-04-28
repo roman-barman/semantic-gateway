@@ -8,15 +8,15 @@ use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DataSourceError {
-    #[error("Failed to register table '{table}': {source}")]
+    #[error("failed to register table '{table}': {source}")]
     RegisterTable {
         table: String,
         #[source]
         source: DataFusionError,
     },
-    #[error("Non-UTF-8 path: {0}")]
+    #[error("non-UTF-8 path: {0}")]
     InvalidFileName(PathBuf),
-    #[error("IO error: {0}")]
+    #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 }
 
