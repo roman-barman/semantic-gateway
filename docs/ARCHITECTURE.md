@@ -87,21 +87,7 @@ Files: `semantic-core/src/semantic_layer/query/`, `semantic_layer_context.rs`, `
 
 ---
 
-### Priority 2 — Structured Error Responses
-
-**Problem**: All errors return HTTP 500 with no body. Clients cannot distinguish validation failures from execution errors.
-
-**Plan**: Return structured JSON errors:
-
-```json
-{ "error": "INVALID_METRIC", "message": "Metric 'orders.foo' not found in model 'orders'" }
-```
-
-Map `QueryError` (bad input) → 400, `ExecutionQueryError` (runtime) → 500. Introduce a shared `ApiError` type in `semantic-gateway-server/src/web_server/api/error.rs`.
-
----
-
-### Priority 3 — Test Infrastructure
+### Priority 2 — Test Infrastructure
 
 **Problem**: Only YAML deserialization in `model_configuration.rs` is tested. No tests for query execution, HTTP endpoints, or error handling paths.
 
