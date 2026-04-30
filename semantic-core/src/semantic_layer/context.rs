@@ -130,10 +130,9 @@ pub enum ExecutionQueryError {
 mod tests {
     use super::*;
     use crate::data_source::DataSourceError;
-    use crate::dimension::Dimension;
-    use crate::metric::Metric;
     use crate::semantic_layer::layer_info::{ModelConfiguration, SemanticLayerInfo};
     use crate::semantic_layer::query::Query;
+    use crate::{Dimension, Metric};
     use datafusion::arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
     use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion::datasource::MemTable;

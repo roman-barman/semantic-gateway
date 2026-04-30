@@ -1,5 +1,4 @@
-use crate::dimension::Dimension;
-use crate::metric::Metric;
+use crate::{Dimension, Metric};
 use std::collections::HashSet;
 
 pub struct Query<'a> {
