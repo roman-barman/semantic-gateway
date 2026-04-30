@@ -54,7 +54,7 @@ fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, QueryError> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(Query::new(metrics, dimensions))
+    Ok(Query::new(metrics, dimensions, vec![]))
 }
 
 fn split_reference(value: &str) -> Option<(&str, &str)> {

@@ -26,6 +26,17 @@ impl ModelConfiguration {
     pub(crate) fn metric_config(&self, metric: &Metric) -> Option<&MetricConfiguration> {
         self.metrics.get(metric.name())
     }
+
+    pub(crate) fn column(&self, field: &str) -> Option<&str> {
+        self.dimensions
+            .get(field)
+            .map(|dim| dim.field().as_ref())
+            .or_else(|| {
+                self.metrics
+                    .get(field)
+                    .map(|metric| metric.field().as_ref())
+            })
+    }
 }
 
 #[cfg(test)]

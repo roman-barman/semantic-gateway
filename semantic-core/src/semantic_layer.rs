@@ -1,5 +1,6 @@
 mod context;
 mod dimension;
+mod filter;
 mod layer_info;
 mod metric;
 pub mod query;

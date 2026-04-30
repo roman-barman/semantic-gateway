@@ -43,4 +43,10 @@ impl SemanticLayerInfo {
             .get(metric.model())
             .and_then(|model| model.metric_config(metric))
     }
+
+    pub(crate) fn column(&self, model: &str, field: &str) -> Option<&str> {
+        self.layer
+            .get(model)
+            .and_then(|model_config| model_config.column(field))
+    }
 }

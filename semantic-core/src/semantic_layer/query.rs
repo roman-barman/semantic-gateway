@@ -1,16 +1,23 @@
+use crate::semantic_layer::filter::Filter;
 use crate::{Dimension, Metric};
 use std::collections::HashSet;
 
 pub struct Query<'a> {
     metrics: Vec<Metric<'a>>,
     dimensions: Vec<Dimension<'a>>,
+    filters: Vec<Filter<'a>>,
 }
 
 impl<'a> Query<'a> {
-    pub fn new(metrics: Vec<Metric<'a>>, dimensions: Vec<Dimension<'a>>) -> Self {
+    pub fn new(
+        metrics: Vec<Metric<'a>>,
+        dimensions: Vec<Dimension<'a>>,
+        filters: Vec<Filter<'a>>,
+    ) -> Self {
         Self {
             metrics,
             dimensions,
+            filters,
         }
     }
 
@@ -20,6 +27,10 @@ impl<'a> Query<'a> {
 
     pub(super) fn dimensions(&self) -> &[Dimension<'_>] {
         &self.dimensions
+    }
+
+    pub(super) fn filters(&self) -> &[Filter<'_>] {
+        &self.filters
     }
 
     pub(super) fn models(&self) -> HashSet<&str> {

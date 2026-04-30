@@ -1,10 +1,13 @@
 mod factory;
 
 use crate::data_source::{DataSource, DataSourceError};
+use crate::semantic_layer::filter::{Filter, FilterOperation, FilterValue};
 use crate::semantic_layer::layer_info::{Aggregate, SemanticLayerInfo};
 use crate::semantic_layer::query::Query;
 use crate::semantic_layer::query_result::{QueryResult, QueryResultError};
 use datafusion::error::DataFusionError;
+use datafusion::logical_expr::lit;
+use datafusion::logical_expr::utils::conjunction;
 use datafusion::prelude::{DataFrame, Expr, SessionContext, col};
 pub use factory::SemanticLayerContextFactory;
 use std::sync::Arc;
@@ -90,11 +93,50 @@ impl SemanticLayerContext {
             })
             .collect();
 
+        let filters: Vec<Expr> = query
+            .filters()
+            .iter()
+            .map(|filter| self.filter_expr(filter))
+            .collect::<Result<_, _>>()?;
+
+        if let Some(predicate) = conjunction(filters) {
+            df = df
+                .filter(predicate)
+                .map_err(ExecutionQueryError::FilterCreation)?;
+        }
+
         df = df
             .aggregate(group_by, aggregate)
             .map_err(ExecutionQueryError::AggregationCreation)?;
 
         Ok(df)
+    }
+
+    fn filter_expr(&self, filter: &Filter<'_>) -> Result<Expr, ExecutionQueryError> {
+        let field = self
+            .semantic_layer_info
+            .column(filter.model(), filter.field())
+            .ok_or(ExecutionQueryError::InvalidFiled {
+                model: filter.model().to_string(),
+                name: filter.field().to_string(),
+            })?;
+        let field = col(field);
+        let value = match filter.value() {
+            FilterValue::String(value) => lit(value.to_string()),
+            FilterValue::Int(value) => lit(*value),
+            FilterValue::Float(value) => lit(*value),
+        };
+
+        let exp = match filter.operation() {
+            FilterOperation::Eq => field.eq(value),
+            FilterOperation::Ne => field.not_eq(value),
+            FilterOperation::Gt => field.gt(value),
+            FilterOperation::Lt => field.lt(value),
+            FilterOperation::Gte => field.gt_eq(value),
+            FilterOperation::Lte => field.lt_eq(value),
+        };
+
+        Ok(exp)
     }
 }
 
@@ -118,12 +160,16 @@ pub enum ExecutionQueryError {
     DataFrameCreation(DataFusionError),
     #[error("failed to create aggregation: {0}")]
     AggregationCreation(DataFusionError),
+    #[error("failed to create filter: {0}")]
+    FilterCreation(DataFusionError),
     #[error("failed to execute query: {0}")]
     QueryExecution(DataFusionError),
     #[error("invalid model: {0}")]
     InvalidModel(String),
     #[error("failed to parse query result: {0}")]
     QueryResult(#[from] QueryResultError),
+    #[error("invalid field: model '{model}', field '{name}'")]
+    InvalidFiled { model: String, name: String },
 }
 
 #[cfg(test)]
@@ -221,9 +267,15 @@ dimensions:
 
         let metrics = vec![Metric::new("revenue", "orders")];
         let dimensions = vec![Dimension::new("country", "orders")];
-        let query = Query::new(metrics, dimensions);
+        let filters = vec![Filter::new(
+            "country",
+            "orders",
+            FilterOperation::Ne,
+            FilterValue::String("US"),
+        )];
+        let query = Query::new(metrics, dimensions, filters);
 
         let result = context.execute_query(&query).await.unwrap();
-        assert_eq!(result.row_count(), 3);
+        assert_eq!(result.row_count(), 2);
     }
 }
