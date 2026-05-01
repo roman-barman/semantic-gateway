@@ -29,7 +29,7 @@ impl WebServer {
             App::new()
                 .wrap(TracingLogger::default())
                 .service(api::health)
-                .service(api::execute_query)
+                .service(api::query::execute_query)
                 .app_data(semantic_layer_context_factory.clone())
         })
         .bind(config.server().address())

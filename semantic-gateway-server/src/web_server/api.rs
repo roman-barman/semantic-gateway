@@ -1,5 +1,4 @@
-mod execute_query;
 mod health;
+pub(crate) mod query;
 
-pub(crate) use execute_query::*;
 pub(crate) use health::*;
