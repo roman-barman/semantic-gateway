@@ -10,6 +10,21 @@ pub(crate) use execute::*;
 pub(crate) struct QueryRequest {
     metrics: Vec<String>,
     dimensions: Vec<String>,
+    filters: Vec<Filter>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub(crate) struct Filter {
+    filed: String,
+    op: String,
+    value: Primitive,
+}
+#[derive(serde::Deserialize, Debug)]
+#[serde(untagged)]
+pub(crate) enum Primitive {
+    Int(i64),
+    Float(f64),
+    String(String),
 }
 
 pub(crate) fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, QueryError> {
