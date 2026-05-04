@@ -27,40 +27,44 @@ pub(crate) enum Primitive {
     String(String),
 }
 
-pub(crate) fn map_to_query(request: &QueryRequest) -> Result<Query<'_>, QueryError> {
-    let metrics: Vec<Metric> = request
-        .metrics
-        .iter()
-        .map(|s| (split_reference(s), s))
-        .map(|(parts, original)| match parts {
-            None => Err(QueryError::InvalidMetric(original.clone())),
-            Some((model, name)) => {
-                if model.is_empty() || name.is_empty() {
-                    Err(QueryError::InvalidMetric(original.clone()))
-                } else {
-                    Ok(Metric::new(name, model))
-                }
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+impl<'a> TryFrom<&'a QueryRequest> for Query<'a> {
+    type Error = QueryError;
 
-    let dimensions: Vec<Dimension> = request
-        .dimensions
-        .iter()
-        .map(|s| (split_reference(s), s))
-        .map(|(parts, original)| match parts {
-            None => Err(QueryError::InvalidDimension(original.clone())),
-            Some((model, name)) => {
-                if model.is_empty() || name.is_empty() {
-                    Err(QueryError::InvalidDimension(original.clone()))
-                } else {
-                    Ok(Dimension::new(name, model))
+    fn try_from(value: &'a QueryRequest) -> Result<Self, Self::Error> {
+        let metrics: Vec<Metric> = value
+            .metrics
+            .iter()
+            .map(|s| (split_reference(s), s))
+            .map(|(parts, original)| match parts {
+                None => Err(QueryError::InvalidMetric(original.clone())),
+                Some((model, name)) => {
+                    if model.is_empty() || name.is_empty() {
+                        Err(QueryError::InvalidMetric(original.clone()))
+                    } else {
+                        Ok(Metric::new(name, model))
+                    }
                 }
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(Query::new(metrics, dimensions, vec![]))
+        let dimensions: Vec<Dimension> = value
+            .dimensions
+            .iter()
+            .map(|s| (split_reference(s), s))
+            .map(|(parts, original)| match parts {
+                None => Err(QueryError::InvalidDimension(original.clone())),
+                Some((model, name)) => {
+                    if model.is_empty() || name.is_empty() {
+                        Err(QueryError::InvalidDimension(original.clone()))
+                    } else {
+                        Ok(Dimension::new(name, model))
+                    }
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Query::new(metrics, dimensions, vec![]))
+    }
 }
 
 fn split_reference(value: &str) -> Option<(&str, &str)> {

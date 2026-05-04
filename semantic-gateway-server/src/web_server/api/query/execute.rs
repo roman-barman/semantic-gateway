@@ -1,6 +1,7 @@
-use crate::web_server::api::query::{QueryRequest, map_to_query};
+use crate::web_server::api::query::QueryRequest;
 use crate::web_server::error::ServerError;
 use actix_web::{HttpResponse, post, web};
+use semantic_core::query::Query;
 use semantic_core::{ExecutionQueryError, SemanticLayerContextFactory};
 
 #[post("/query/execute")]
@@ -10,7 +11,7 @@ pub(crate) async fn execute_query(
     request: web::Json<QueryRequest>,
 ) -> Result<HttpResponse, ServerError> {
     let context = context_factory.create();
-    let query = map_to_query(&request)?;
+    let query = Query::try_from(&request.0)?;
     let result = context.execute_query(&query).await?;
     Ok(HttpResponse::Ok().json(result))
 }
