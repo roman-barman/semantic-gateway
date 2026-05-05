@@ -8,5 +8,6 @@ pub mod query_result;
 
 pub use context::{ExecutionQueryError, SemanticLayerContext, SemanticLayerContextFactory};
 pub use dimension::Dimension;
+pub use filter::*;
 pub use layer_info::{ModelConfiguration, SemanticLayerInfo};
 pub use metric::Metric;
