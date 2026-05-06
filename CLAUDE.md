@@ -120,9 +120,16 @@ Execute a semantic query.
 ```json
 {
   "metrics": ["orders.revenue", "orders.orders_count"],
-  "dimensions": ["orders.country"]
+  "dimensions": ["orders.country"],
+  "filters": [
+    { "field": "orders.country", "op": "ne", "value": "US" }
+  ]
 }
 ```
+
+`filters` is optional. Each filter: `field` (`model_name.field_name`), `op` (`eq` | `ne` | `lt` | `lte` | `gt` | `gte`), `value` (string, integer, or float). Filters are applied as WHERE predicates before aggregation.
+
+**Error responses:** `422` for invalid references or unknown operations; `500` for execution failures.
 
 **Response:**
 ```json
@@ -159,5 +166,5 @@ Execute a semantic query.
 
 - Unit tests live in the same file as the code under `#[cfg(test)]`.
 - Use real YAML strings in deserialization tests — do not construct structs manually.
-- For query execution tests, use an in-memory `MemDataSource` (test-only `DataSource` implementation that registers `MemTable`) rather than real files.
+- For query execution tests, use an in-memory `MemDataSource` (test-only `DataSource` implementation that registers `MemTable`) rather than real files. Tests for `SemanticLayerContext` (including filter execution) live in `semantic-core/src/semantic_layer/context.rs`.
 - Integration tests for HTTP endpoints are not yet implemented but should be added before production readiness.

@@ -28,21 +28,23 @@ semantic-gateway/
 3. Tracing subscriber initialized
 4. YAML models loaded via `read_models()` → `HashMap<String, ModelConfiguration>`
 5. `ParquetDataSource::new(data_dir)` created, wrapped in `Arc<dyn DataSource>`
-6. `SemanticLayerInfo` and `DataSource` stored as Actix `web::Data<>` (shared across requests)
+6. `SemanticLayerContextFactory::new(layer_info, data_source)` created and stored as `web::Data<SemanticLayerContextFactory>` (shared across requests; holds shared DataFusion `RuntimeEnv`)
 7. `WebServer::start()` binds and runs
 
 ### Request Flow
 
 ```
-POST /query/execute { metrics, dimensions }
+POST /query/execute { metrics, dimensions, filters? }
     ↓
-[execute_query handler]       — splits "model.field" refs, builds Query
+[execute_query handler]
     ↓
-[SemanticLayerContext::new]   — receives SemanticLayerInfo + &dyn DataSource
+[context_factory.create()]    — creates SemanticLayerContext with shared RuntimeEnv
+    ↓
+[Query::try_from(&request)]   — validates refs, builds Query with Filter vec
     ↓
 [data_source.register()]      — registers Parquet files as DataFusion tables
     ↓
-[build_dataframe()]           — builds GROUP BY + aggregate logical plan
+[build_dataframe()]           — builds WHERE (filters) + GROUP BY + aggregate plan
     ↓
 [df.collect()]                — executes query, returns Arrow RecordBatches
     ↓
@@ -55,44 +57,29 @@ HTTP 200 { schema, columns, row_count }
 
 | Type | Location | Purpose |
 |------|----------|---------|
-| `ModelConfiguration` | `semantic_layer/semantic_layer_info/` | Deserializes YAML model (table, metrics, dimensions) |
+| `ModelConfiguration` | `semantic_layer/layer_info/` | Deserializes YAML model (table, metrics, dimensions) |
 | `SemanticLayerInfo` | `semantic_layer/` | Registry: model name → `ModelConfiguration` |
-| `SemanticLayerContext` | `semantic_layer/` | Executes queries via DataFusion |
-| `Query<'a>` | `semantic_layer/query/` | Metrics + dimensions bound to a request lifetime |
-| `QueryResult` | `semantic_layer/query_result/` | Serializable result with schema metadata |
-| `DataSource` | `data_source/` | Trait: registers tables into a DataFusion `SessionContext` |
+| `SemanticLayerContextFactory` | `semantic_layer/context/factory.rs` | Holds shared DataFusion `RuntimeEnv`; creates `SemanticLayerContext` per request |
+| `SemanticLayerContext` | `semantic_layer/context.rs` | Executes queries via DataFusion |
+| `Query<'a>` | `semantic_layer/query.rs` | Metrics + dimensions + filters bound to a request lifetime |
+| `Filter<'a>` | `semantic_layer/filter.rs` | WHERE predicate: field reference, operation, value |
+| `FilterOperation` | `semantic_layer/filter.rs` | Enum: `Eq \| Ne \| Lt \| Lte \| Gt \| Gte` |
+| `FilterValue<'a>` | `semantic_layer/filter.rs` | Enum: `String \| Int \| Float` |
+| `QueryResult` | `semantic_layer/query_result.rs` | Serializable result with schema metadata |
+| `DataSource` | `data_source.rs` | Trait: registers tables into a DataFusion `SessionContext` |
 | `ParquetDataSource` | `data_source/parquet.rs` | Scans a directory and registers `.parquet` files as tables |
 
 ---
 
 ## Architectural Gaps & Roadmap
 
-### Priority 1 — Query Filters
+### Priority 1 — Test Infrastructure (partially done)
 
-**Problem**: `Query` carries only metrics and dimensions. No WHERE, HAVING, ORDER BY, or LIMIT support.
+**Done**: Unit tests for `SemanticLayerContext` (query execution and filter evaluation) live in `semantic-core/src/semantic_layer/context.rs` under `#[cfg(test)]`, using an in-memory `MemDataSource` that registers a `MemTable`. YAML deserialization tests remain in `model_configuration.rs`.
 
-**Plan**: Add a `Filter` type to `semantic-core/src/semantic_layer/query/filter.rs`:
-
-```rust
-pub struct Filter {
-    pub dimension: String,  // "orders.country"
-    pub op: FilterOp,       // Eq | NotEq | In | Lt | Gt | ...
-    pub value: FilterValue, // String | Number | List
-}
-```
-
-Translate filters into DataFusion `Expr` predicates inside `build_dataframe()`. Expose via `QueryRequest.filters: Option<Vec<FilterRequest>>` in the server.
-
-Files: `semantic-core/src/semantic_layer/query/`, `semantic_layer_context.rs`, `execute_query.rs`.
-
----
-
-### Priority 2 — Test Infrastructure
-
-**Problem**: Only YAML deserialization in `model_configuration.rs` is tested. No tests for query execution, HTTP endpoints, or error handling paths.
+**Remaining**: Integration tests for HTTP endpoints are not yet implemented.
 
 **Plan**:
-- Unit tests in `semantic_layer_context.rs` using DataFusion `MemTable` (keeps `semantic-core` I/O-free).
 - Integration tests in `semantic-gateway-server/tests/api_tests.rs` using `actix_web::test`.
 - No new test dependencies needed — DataFusion and Actix already provide the required tooling.
 

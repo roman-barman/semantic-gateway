@@ -96,9 +96,31 @@ Execute a semantic query.
 ```json
 {
   "metrics": ["orders.revenue", "orders.orders_count"],
-  "dimensions": ["orders.country"]
+  "dimensions": ["orders.country"],
+  "filters": [
+    { "field": "orders.country", "op": "ne", "value": "US" }
+  ]
 }
 ```
+
+`filters` is optional. Omitting it returns all rows.
+
+**Filter fields:**
+
+| Field | Description |
+|-------|-------------|
+| `field` | Dot-notation column reference: `model_name.field_name` |
+| `op` | Operation: `eq`, `ne`, `lt`, `lte`, `gt`, `gte` |
+| `value` | String, integer, or float |
+
+Filters are applied as WHERE predicates before aggregation.
+
+**Error responses:**
+
+| Status | Condition |
+|--------|-----------|
+| `422 Unprocessable Entity` | Invalid metric/dimension/filter reference, unknown operation |
+| `500 Internal Server Error` | Query execution failure |
 
 **Response:**
 
