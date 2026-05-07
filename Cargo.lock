@@ -3130,6 +3130,7 @@ dependencies = [
  "datafusion",
  "serde",
  "serde_yaml",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
