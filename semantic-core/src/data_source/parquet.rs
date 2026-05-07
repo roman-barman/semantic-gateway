@@ -2,12 +2,21 @@ use super::{DataSource, DataSourceError};
 use datafusion::prelude::SessionContext;
 use std::path::PathBuf;
 
+/// Registers Parquet files from a directory as DataFusion tables.
+///
+/// Each `*.parquet` file in the directory is registered as a table named after
+/// its file stem (e.g. `orders.parquet` → table `orders`). Subdirectories and
+/// non-`.parquet` files are silently skipped.
 #[derive(Debug)]
 pub struct ParquetDataSource {
     data_dir: PathBuf,
 }
 
 impl ParquetDataSource {
+    /// Creates a new `ParquetDataSource` rooted at `data_dir`.
+    ///
+    /// Returns [`ParquetDataSourceError::NotADirectory`] if `data_dir` does not
+    /// exist or is not a directory.
     pub fn new(data_dir: PathBuf) -> Result<Self, ParquetDataSourceError> {
         if !data_dir.is_dir() {
             return Err(ParquetDataSourceError::NotADirectory(data_dir));
@@ -47,6 +56,7 @@ impl DataSource for ParquetDataSource {
     }
 }
 
+/// Errors that can occur when constructing a [`ParquetDataSource`].
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub enum ParquetDataSourceError {
     #[error("data source path is not a directory: {0}")]
