@@ -92,77 +92,127 @@ mod tests {
 
     #[test]
     fn new_returns_error_for_nonexistent_path() {
+        // Arrange
         let path = PathBuf::from("/tmp/semantic_gateway_definitely_nonexistent_dir_xyzzy");
+
+        // Act
+        let result = ParquetDataSource::new(path.clone());
+
+        // Assert
         assert_eq!(
-            ParquetDataSource::new(path.clone()).unwrap_err(),
+            result.unwrap_err(),
             ParquetDataSourceError::NotADirectory(path)
         );
     }
 
     #[test]
     fn new_returns_error_when_path_is_a_file() {
+        // Arrange
         let file = tempfile::NamedTempFile::new().unwrap();
         let path = file.path().to_path_buf();
+
+        // Act
+        let result = ParquetDataSource::new(path.clone());
+
+        // Assert
         assert_eq!(
-            ParquetDataSource::new(path.clone()).unwrap_err(),
+            result.unwrap_err(),
             ParquetDataSourceError::NotADirectory(path)
         );
     }
 
     #[test]
     fn new_succeeds_for_valid_directory() {
+        // Arrange
         let dir = tempfile::tempdir().unwrap();
-        assert!(ParquetDataSource::new(dir.path().to_path_buf()).is_ok());
+
+        // Act
+        let result = ParquetDataSource::new(dir.path().to_path_buf());
+
+        // Assert
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn register_on_empty_directory_succeeds() {
+        // Arrange
         let dir = tempfile::tempdir().unwrap();
         let ds = ParquetDataSource::new(dir.path().to_path_buf()).unwrap();
         let ctx = SessionContext::new();
-        ds.register(&ctx).await.unwrap();
+
+        // Act
+        let result = ds.register(&ctx).await;
+
+        // Assert
+        assert!(result.is_ok());
         assert!(table_names(&ctx).is_empty());
     }
 
     #[tokio::test]
     async fn register_skips_non_parquet_files() {
+        // Arrange
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("data.csv"), "id,name\n1,test").unwrap();
         std::fs::write(dir.path().join("notes.txt"), "hello").unwrap();
         let ds = ParquetDataSource::new(dir.path().to_path_buf()).unwrap();
         let ctx = SessionContext::new();
-        ds.register(&ctx).await.unwrap();
+
+        // Act
+        let result = ds.register(&ctx).await;
+
+        // Assert
+        assert!(result.is_ok());
         assert!(table_names(&ctx).is_empty());
     }
 
     #[tokio::test]
     async fn register_skips_subdirectories() {
+        // Arrange
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir(dir.path().join("subdir")).unwrap();
         let ds = ParquetDataSource::new(dir.path().to_path_buf()).unwrap();
         let ctx = SessionContext::new();
-        ds.register(&ctx).await.unwrap();
+
+        // Act
+        let result = ds.register(&ctx).await;
+
+        // Assert
+        assert!(result.is_ok());
         assert!(table_names(&ctx).is_empty());
     }
 
     #[tokio::test]
     async fn register_creates_table_named_after_file_stem() {
+        // Arrange
         let dir = tempfile::tempdir().unwrap();
         write_empty_parquet(&dir.path().join("orders.parquet"));
         let ds = ParquetDataSource::new(dir.path().to_path_buf()).unwrap();
         let ctx = SessionContext::new();
-        ds.register(&ctx).await.unwrap();
-        assert_eq!(table_names(&ctx), vec!["orders"]);
+
+        // Act
+        let result = ds.register(&ctx).await;
+
+        // Assert
+        assert!(result.is_ok());
+        let mut names = table_names(&ctx);
+        names.sort();
+        assert_eq!(names, vec!["orders"]);
     }
 
     #[tokio::test]
     async fn register_all_parquet_files_in_directory() {
+        // Arrange
         let dir = tempfile::tempdir().unwrap();
         write_empty_parquet(&dir.path().join("orders.parquet"));
         write_empty_parquet(&dir.path().join("products.parquet"));
         let ds = ParquetDataSource::new(dir.path().to_path_buf()).unwrap();
         let ctx = SessionContext::new();
-        ds.register(&ctx).await.unwrap();
+
+        // Act
+        let result = ds.register(&ctx).await;
+
+        // Assert
+        assert!(result.is_ok());
         let mut names = table_names(&ctx);
         names.sort();
         assert_eq!(names, vec!["orders", "products"]);
