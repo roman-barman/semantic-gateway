@@ -1,6 +1,7 @@
 use crate::semantic_layer::layer_info::field::Field;
 use crate::semantic_layer::layer_info::title::Title;
 
+/// Configuration for a single dimension within a model.
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 pub(crate) struct DimensionConfiguration {
     title: Title,
@@ -8,6 +9,7 @@ pub(crate) struct DimensionConfiguration {
 }
 
 impl DimensionConfiguration {
+    /// Returns the source column that this dimension maps to.
     pub(crate) fn field(&self) -> &Field {
         &self.field
     }

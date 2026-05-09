@@ -1,3 +1,4 @@
+/// Newtype wrapper around a DataFusion table name (registered data source).
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 pub(crate) struct Table(String);
 

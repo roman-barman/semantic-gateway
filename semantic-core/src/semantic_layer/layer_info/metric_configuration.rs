@@ -2,6 +2,7 @@ use crate::semantic_layer::layer_info::aggregate::Aggregate;
 use crate::semantic_layer::layer_info::field::Field;
 use crate::semantic_layer::layer_info::title::Title;
 
+/// Configuration for a single metric within a model.
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 pub(crate) struct MetricConfiguration {
     title: Title,
@@ -10,10 +11,12 @@ pub(crate) struct MetricConfiguration {
 }
 
 impl MetricConfiguration {
+    /// Returns the aggregation function applied to this metric.
     pub(crate) fn aggregate(&self) -> &Aggregate {
         &self.aggregate
     }
 
+    /// Returns the source column that this metric aggregates.
     pub(crate) fn field(&self) -> &Field {
         &self.field
     }

@@ -1,3 +1,4 @@
+/// Newtype wrapper around a source column name (as it appears in the physical table).
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 pub(crate) struct Field(String);
 

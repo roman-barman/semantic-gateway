@@ -4,6 +4,7 @@ use crate::semantic_layer::layer_info::table::Table;
 use crate::{Dimension, Metric};
 use std::collections::HashMap;
 
+/// Configuration for a single semantic model, deserialized from a YAML model file.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct ModelConfiguration {
     table: Table,
@@ -12,10 +13,12 @@ pub struct ModelConfiguration {
 }
 
 impl ModelConfiguration {
+    /// Returns the DataFusion table name this model is backed by.
     pub(crate) fn table(&self) -> &Table {
         &self.table
     }
 
+    /// Returns the configuration for `dimension`, or `None` if the dimension is not defined in this model.
     pub(crate) fn dimension_config(
         &self,
         dimension: &Dimension,
@@ -23,10 +26,14 @@ impl ModelConfiguration {
         self.dimensions.get(dimension.name())
     }
 
+    /// Returns the configuration for `metric`, or `None` if the metric is not defined in this model.
     pub(crate) fn metric_config(&self, metric: &Metric) -> Option<&MetricConfiguration> {
         self.metrics.get(metric.name())
     }
 
+    /// Returns the source column name for `field`, checking dimensions before metrics.
+    /// Returns `None` if `field` is not defined as either a dimension or a metric.
+    /// When a dimension and a metric share the same name, the dimension's column is returned.
     pub(crate) fn column(&self, field: &str) -> Option<&str> {
         self.dimensions
             .get(field)
