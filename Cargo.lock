@@ -3129,6 +3129,7 @@ dependencies = [
  "async-trait",
  "datafusion",
  "serde",
+ "serde_json",
  "serde_yaml",
  "tempfile",
  "thiserror",

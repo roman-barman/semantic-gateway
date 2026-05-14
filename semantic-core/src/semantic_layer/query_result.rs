@@ -170,3 +170,350 @@ pub enum QueryResultError {
     #[error("invalid schema")]
     InvalidSchema,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use datafusion::arrow::array::{
+        BooleanArray, Float32Array, Float64Array, Int8Array, Int16Array, Int32Array, Int64Array,
+        StringArray, UInt8Array, UInt16Array, UInt32Array, UInt64Array,
+    };
+    use datafusion::arrow::datatypes::{DataType, Field, Schema};
+    use std::sync::Arc;
+
+    fn make_batch(schema: Arc<Schema>, arrays: Vec<ArrayRef>) -> RecordBatch {
+        RecordBatch::try_new(schema, arrays).unwrap()
+    }
+
+    fn json(result: &QueryResult) -> serde_json::Value {
+        serde_json::to_value(result).unwrap()
+    }
+
+    #[test]
+    fn try_from_empty_vec_returns_empty_result() {
+        // Arrange
+        let batches: Vec<RecordBatch> = vec![];
+
+        // Act
+        let result = QueryResult::try_from(batches).unwrap();
+
+        // Assert
+        assert_eq!(result.row_count(), 0);
+        let j = json(&result);
+        assert_eq!(j["schema"], serde_json::json!([]));
+        assert_eq!(j["columns"], serde_json::json!({}));
+        assert_eq!(j["row_count"], 0);
+    }
+
+    #[test]
+    fn try_from_single_batch_returns_correct_row_count() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int64, false)]));
+        let batch = make_batch(schema, vec![Arc::new(Int64Array::from(vec![1i64, 2, 3]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(result.row_count(), 3);
+    }
+
+    #[test]
+    fn try_from_multiple_batches_concatenates_rows() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int64, false)]));
+        let batch1 = make_batch(
+            schema.clone(),
+            vec![Arc::new(Int64Array::from(vec![1i64, 2]))],
+        );
+        let batch2 = make_batch(schema, vec![Arc::new(Int64Array::from(vec![3i64, 4, 5]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch1, batch2]).unwrap();
+
+        // Assert
+        assert_eq!(result.row_count(), 5);
+    }
+
+    #[test]
+    fn schema_utf8_column_maps_to_string_value_type() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new("name", DataType::Utf8, false)]));
+        let batch = make_batch(schema, vec![Arc::new(StringArray::from(vec!["a"]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(json(&result)["schema"][0]["value_type"], "String");
+    }
+
+    #[test]
+    fn schema_int_types_map_to_int_value_type() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("i8", DataType::Int8, false),
+            Field::new("i16", DataType::Int16, false),
+            Field::new("i32", DataType::Int32, false),
+            Field::new("i64", DataType::Int64, false),
+        ]));
+        let batch = make_batch(
+            schema,
+            vec![
+                Arc::new(Int8Array::from(vec![1i8])),
+                Arc::new(Int16Array::from(vec![1i16])),
+                Arc::new(Int32Array::from(vec![1i32])),
+                Arc::new(Int64Array::from(vec![1i64])),
+            ],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        let schema_json = &json(&result)["schema"];
+        for i in 0..4 {
+            assert_eq!(schema_json[i]["value_type"], "Int");
+        }
+    }
+
+    #[test]
+    fn schema_uint_types_map_to_uint_value_type() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("u8", DataType::UInt8, false),
+            Field::new("u16", DataType::UInt16, false),
+            Field::new("u32", DataType::UInt32, false),
+            Field::new("u64", DataType::UInt64, false),
+        ]));
+        let batch = make_batch(
+            schema,
+            vec![
+                Arc::new(UInt8Array::from(vec![1u8])),
+                Arc::new(UInt16Array::from(vec![1u16])),
+                Arc::new(UInt32Array::from(vec![1u32])),
+                Arc::new(UInt64Array::from(vec![1u64])),
+            ],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        let schema_json = &json(&result)["schema"];
+        for i in 0..4 {
+            assert_eq!(schema_json[i]["value_type"], "UInt");
+        }
+    }
+
+    #[test]
+    fn schema_float_types_map_to_float_value_type() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("f32", DataType::Float32, false),
+            Field::new("f64", DataType::Float64, false),
+        ]));
+        let batch = make_batch(
+            schema,
+            vec![
+                Arc::new(Float32Array::from(vec![1.0f32])),
+                Arc::new(Float64Array::from(vec![1.0f64])),
+            ],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        let schema_json = &json(&result)["schema"];
+        assert_eq!(schema_json[0]["value_type"], "Float");
+        assert_eq!(schema_json[1]["value_type"], "Float");
+    }
+
+    #[test]
+    fn schema_boolean_column_maps_to_unknown_value_type() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "flag",
+            DataType::Boolean,
+            false,
+        )]));
+        let batch = make_batch(schema, vec![Arc::new(BooleanArray::from(vec![true]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(json(&result)["schema"][0]["value_type"], "Unknown");
+    }
+
+    #[test]
+    fn serialize_int64_column_emits_i64_numbers() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new("val", DataType::Int64, false)]));
+        let batch = make_batch(schema, vec![Arc::new(Int64Array::from(vec![10i64, 20]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(json(&result)["columns"]["val"], serde_json::json!([10, 20]));
+    }
+
+    #[test]
+    fn serialize_uint64_column_emits_u64_numbers() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "val",
+            DataType::UInt64,
+            false,
+        )]));
+        let batch = make_batch(schema, vec![Arc::new(UInt64Array::from(vec![5u64, 15]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(json(&result)["columns"]["val"], serde_json::json!([5, 15]));
+    }
+
+    #[test]
+    fn serialize_float64_column_emits_f64_numbers() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "val",
+            DataType::Float64,
+            false,
+        )]));
+        let batch = make_batch(
+            schema,
+            vec![Arc::new(Float64Array::from(vec![1.5f64, 2.5]))],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(
+            json(&result)["columns"]["val"],
+            serde_json::json!([1.5, 2.5])
+        );
+    }
+
+    #[test]
+    fn serialize_float32_column_widens_to_f64() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "val",
+            DataType::Float32,
+            false,
+        )]));
+        let batch = make_batch(schema, vec![Arc::new(Float32Array::from(vec![3.0f32]))]);
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(json(&result)["columns"]["val"], serde_json::json!([3.0]));
+    }
+
+    #[test]
+    fn serialize_utf8_column_emits_json_strings() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new("city", DataType::Utf8, false)]));
+        let batch = make_batch(
+            schema,
+            vec![Arc::new(StringArray::from(vec!["London", "Paris"]))],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(
+            json(&result)["columns"]["city"],
+            serde_json::json!(["London", "Paris"])
+        );
+    }
+
+    #[test]
+    fn serialize_nullable_column_emits_null_for_missing_values() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new("val", DataType::Int64, true)]));
+        let batch = make_batch(
+            schema,
+            vec![Arc::new(Int64Array::from(vec![Some(7i64), None, Some(9)]))],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(
+            json(&result)["columns"]["val"],
+            serde_json::json!([7, null, 9])
+        );
+    }
+
+    #[test]
+    fn serialize_boolean_column_emits_all_null_values() {
+        // Arrange
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "flag",
+            DataType::Boolean,
+            false,
+        )]));
+        let batch = make_batch(
+            schema,
+            vec![Arc::new(BooleanArray::from(vec![true, false]))],
+        );
+
+        // Act
+        let result = QueryResult::try_from(vec![batch]).unwrap();
+
+        // Assert
+        assert_eq!(
+            json(&result)["columns"]["flag"],
+            serde_json::json!([null, null])
+        );
+    }
+
+    #[test]
+    fn serialize_empty_result_produces_correct_json_structure() {
+        // Arrange
+        let batches: Vec<RecordBatch> = vec![];
+
+        // Act
+        let result = QueryResult::try_from(batches).unwrap();
+
+        // Assert
+        assert_eq!(
+            json(&result),
+            serde_json::json!({"schema": [], "columns": {}, "row_count": 0})
+        );
+    }
+
+    #[test]
+    fn error_unexpected_display_includes_message() {
+        // Arrange
+        let err = QueryResultError::Unexpected("something went wrong".to_string());
+
+        // Act
+        let display = format!("{err}");
+
+        // Assert
+        assert_eq!(display, "unexpected error: something went wrong");
+    }
+
+    #[test]
+    fn error_invalid_schema_display_is_correct() {
+        // Arrange
+        let err = QueryResultError::InvalidSchema;
+
+        // Act
+        let display = format!("{err}");
+
+        // Assert
+        assert_eq!(display, "invalid schema");
+    }
+}
