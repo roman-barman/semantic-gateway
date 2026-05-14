@@ -273,7 +273,7 @@ dimensions:
             FilterOperation::Ne,
             FilterValue::String("US"),
         )];
-        let query = Query::new(metrics, dimensions, filters);
+        let query = Query::try_new(metrics, dimensions, filters).unwrap();
 
         let result = context.execute_query(&query).await.unwrap();
         assert_eq!(result.row_count(), 2);

@@ -1,5 +1,5 @@
 use crate::web_server::error::ServerError;
-use semantic_core::query::Query;
+use semantic_core::query::{Query, QueryValidationError};
 use semantic_core::{Dimension, Metric};
 
 mod execute;
@@ -71,7 +71,7 @@ impl<'a> TryFrom<&'a QueryRequest> for Query<'a> {
             None => vec![],
         };
 
-        Ok(Query::new(metrics, dimensions, filters))
+        Ok(Query::try_new(metrics, dimensions, filters)?)
     }
 }
 
@@ -124,6 +124,8 @@ pub(crate) enum QueryError {
     FilterFieldName(String),
     #[error("invalid filter operation: {0}")]
     FilterOperation(String),
+    #[error(transparent)]
+    Validation(#[from] QueryValidationError),
 }
 
 impl From<QueryError> for ServerError {

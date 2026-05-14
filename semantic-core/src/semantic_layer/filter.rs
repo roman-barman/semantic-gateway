@@ -1,3 +1,4 @@
+#[derive(PartialEq)]
 pub struct Filter<'a> {
     field: &'a str,
     model: &'a str,

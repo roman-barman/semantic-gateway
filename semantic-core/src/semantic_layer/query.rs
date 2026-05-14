@@ -2,6 +2,16 @@ use crate::semantic_layer::filter::Filter;
 use crate::{Dimension, Metric};
 use std::collections::HashSet;
 
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum QueryValidationError {
+    #[error("duplicate metric: model '{model}', name '{name}'")]
+    DuplicateMetric { model: String, name: String },
+    #[error("duplicate dimension: model '{model}', name '{name}'")]
+    DuplicateDimension { model: String, name: String },
+    #[error("duplicate filter")]
+    DuplicateFilter,
+}
+
 pub struct Query<'a> {
     metrics: Vec<Metric<'a>>,
     dimensions: Vec<Dimension<'a>>,
@@ -9,16 +19,42 @@ pub struct Query<'a> {
 }
 
 impl<'a> Query<'a> {
-    pub fn new(
+    pub fn try_new(
         metrics: Vec<Metric<'a>>,
         dimensions: Vec<Dimension<'a>>,
         filters: Vec<Filter<'a>>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, QueryValidationError> {
+        let mut seen = HashSet::new();
+        for m in &metrics {
+            if !seen.insert(m) {
+                return Err(QueryValidationError::DuplicateMetric {
+                    model: m.model().to_owned(),
+                    name: m.name().to_owned(),
+                });
+            }
+        }
+
+        let mut seen = HashSet::new();
+        for d in &dimensions {
+            if !seen.insert(d) {
+                return Err(QueryValidationError::DuplicateDimension {
+                    model: d.model().to_owned(),
+                    name: d.name().to_owned(),
+                });
+            }
+        }
+
+        for (i, a) in filters.iter().enumerate() {
+            if filters[i + 1..].iter().any(|b| a == b) {
+                return Err(QueryValidationError::DuplicateFilter);
+            }
+        }
+
+        Ok(Self {
             metrics,
             dimensions,
             filters,
-        }
+        })
     }
 
     pub(super) fn metrics(&self) -> &[Metric<'_>] {

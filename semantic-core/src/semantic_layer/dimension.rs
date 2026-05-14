@@ -1,3 +1,4 @@
+#[derive(PartialEq, Eq, Hash)]
 pub struct Dimension<'a> {
     name: &'a str,
     model: &'a str,

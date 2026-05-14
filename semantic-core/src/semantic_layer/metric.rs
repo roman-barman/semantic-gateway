@@ -1,3 +1,4 @@
+#[derive(PartialEq, Eq, Hash)]
 pub struct Metric<'a> {
     name: &'a str,
     model: &'a str,
