@@ -78,6 +78,38 @@ fn arrow_type_to_value_type(dt: &DataType) -> ValueType {
     }
 }
 
+macro_rules! serialize_primitive {
+    ($seq:expr, $arr:expr, $arr_type:ty, $wide:ty) => {{
+        let typed = $arr
+            .as_any()
+            .downcast_ref::<$arr_type>()
+            .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
+        for i in 0..typed.len() {
+            if typed.is_null(i) {
+                $seq.serialize_element(&Option::<$wide>::None)?;
+            } else {
+                $seq.serialize_element(&(typed.value(i) as $wide))?;
+            }
+        }
+    }};
+}
+
+macro_rules! serialize_string {
+    ($seq:expr, $arr:expr, $arr_type:ty) => {{
+        let typed = $arr
+            .as_any()
+            .downcast_ref::<$arr_type>()
+            .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
+        for i in 0..typed.len() {
+            if typed.is_null(i) {
+                $seq.serialize_element(&Option::<&str>::None)?;
+            } else {
+                $seq.serialize_element(typed.value(i))?;
+            }
+        }
+    }};
+}
+
 struct SerializableColumn<'a>(&'a dyn Array);
 
 impl Serialize for SerializableColumn<'_> {
@@ -85,59 +117,19 @@ impl Serialize for SerializableColumn<'_> {
         let arr = self.0;
         let mut seq = serializer.serialize_seq(Some(arr.len()))?;
 
-        macro_rules! serialize_primitive {
-            ($arr_type:ty, $wide:ty) => {{
-                let arr = arr
-                    .as_any()
-                    .downcast_ref::<$arr_type>()
-                    .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
-                for i in 0..arr.len() {
-                    if arr.is_null(i) {
-                        seq.serialize_element(&Option::<$wide>::None)?;
-                    } else {
-                        seq.serialize_element(&(arr.value(i) as $wide))?;
-                    }
-                }
-            }};
-        }
-
         match arr.data_type() {
-            DataType::Utf8 => {
-                let arr = arr
-                    .as_any()
-                    .downcast_ref::<StringArray>()
-                    .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
-                for i in 0..arr.len() {
-                    if arr.is_null(i) {
-                        seq.serialize_element(&Option::<&str>::None)?;
-                    } else {
-                        seq.serialize_element(arr.value(i))?;
-                    }
-                }
-            }
-            DataType::Utf8View => {
-                let arr = arr
-                    .as_any()
-                    .downcast_ref::<StringViewArray>()
-                    .ok_or_else(|| serde::ser::Error::custom("invalid array type"))?;
-                for i in 0..arr.len() {
-                    if arr.is_null(i) {
-                        seq.serialize_element(&Option::<&str>::None)?;
-                    } else {
-                        seq.serialize_element(arr.value(i))?;
-                    }
-                }
-            }
-            DataType::Int8 => serialize_primitive!(Int8Array, i64),
-            DataType::Int16 => serialize_primitive!(Int16Array, i64),
-            DataType::Int32 => serialize_primitive!(Int32Array, i64),
-            DataType::Int64 => serialize_primitive!(Int64Array, i64),
-            DataType::UInt8 => serialize_primitive!(UInt8Array, u64),
-            DataType::UInt16 => serialize_primitive!(UInt16Array, u64),
-            DataType::UInt32 => serialize_primitive!(UInt32Array, u64),
-            DataType::UInt64 => serialize_primitive!(UInt64Array, u64),
-            DataType::Float32 => serialize_primitive!(Float32Array, f64),
-            DataType::Float64 => serialize_primitive!(Float64Array, f64),
+            DataType::Utf8 => serialize_string!(seq, arr, StringArray),
+            DataType::Utf8View => serialize_string!(seq, arr, StringViewArray),
+            DataType::Int8 => serialize_primitive!(seq, arr, Int8Array, i64),
+            DataType::Int16 => serialize_primitive!(seq, arr, Int16Array, i64),
+            DataType::Int32 => serialize_primitive!(seq, arr, Int32Array, i64),
+            DataType::Int64 => serialize_primitive!(seq, arr, Int64Array, i64),
+            DataType::UInt8 => serialize_primitive!(seq, arr, UInt8Array, u64),
+            DataType::UInt16 => serialize_primitive!(seq, arr, UInt16Array, u64),
+            DataType::UInt32 => serialize_primitive!(seq, arr, UInt32Array, u64),
+            DataType::UInt64 => serialize_primitive!(seq, arr, UInt64Array, u64),
+            DataType::Float32 => serialize_primitive!(seq, arr, Float32Array, f64),
+            DataType::Float64 => serialize_primitive!(seq, arr, Float64Array, f64),
             _ => {
                 for _ in 0..arr.len() {
                     seq.serialize_element(&Option::<()>::None)?;
