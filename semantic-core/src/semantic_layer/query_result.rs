@@ -20,6 +20,7 @@ pub struct QueryResult {
     row_count: usize,
 }
 
+#[cfg(test)]
 impl QueryResult {
     pub fn row_count(&self) -> usize {
         self.row_count
