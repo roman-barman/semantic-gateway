@@ -1,3 +1,5 @@
+//! Converts DataFusion [`RecordBatch`]es into a JSON-serializable query result.
+
 use crate::semantic_layer::query_result::column_meta::ColumnMeta;
 use crate::semantic_layer::query_result::value_type::ValueType;
 use datafusion::arrow::array::{
@@ -13,6 +15,11 @@ use serde::{Serialize, Serializer};
 mod column_meta;
 mod value_type;
 
+/// The result of a successfully executed semantic query.
+///
+/// Columns are stored as an ordered `Vec` of `(name, array)` pairs rather than a map
+/// to preserve schema ordering. Serializes to:
+/// `{"schema": [...], "columns": {...}, "row_count": N}`.
 #[derive(Debug)]
 pub struct QueryResult {
     schema: Vec<ColumnMeta>,
@@ -29,6 +36,11 @@ impl QueryResult {
 
 impl TryFrom<Vec<RecordBatch>> for QueryResult {
     type Error = QueryResultError;
+
+    /// Converts a DataFusion result set into a `QueryResult`.
+    ///
+    /// DataFusion may partition a single query result across multiple [`RecordBatch`]es;
+    /// this implementation concatenates them before column extraction.
     fn try_from(value: Vec<RecordBatch>) -> Result<Self, Self::Error> {
         if value.is_empty() {
             return Ok(Self {
@@ -163,10 +175,12 @@ impl Serialize for QueryResult {
     }
 }
 
+/// Errors that can occur while constructing a [`QueryResult`] from Arrow record batches.
 #[derive(Debug, thiserror::Error)]
 pub enum QueryResultError {
     #[error("unexpected error: {0}")]
     Unexpected(String),
+    /// Arrow batch concatenation failed due to incompatible schemas across batches.
     #[error("invalid schema")]
     InvalidSchema,
 }
